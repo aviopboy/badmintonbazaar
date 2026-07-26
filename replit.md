@@ -8,9 +8,9 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 - `pnpm --filter @workspace/badminton-bazaar run typecheck` — typecheck the storefront
 - `pnpm run typecheck` — full workspace typecheck
 
-## Demo Credentials
+## Accounts
 
-- **Admin:** `avilit9@gmail.com` / `admin`
+- Admin access is intentionally not displayed in the public storefront.
 - Any registered user email + password they chose at sign-up
 
 ## Stack
@@ -42,18 +42,19 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 - Account page: change email, change password
 - Auth gate before checkout
 
-### Admin Panel (`avilit9@gmail.com` / `admin`)
+### Admin Panel
 - **Products tab:** list, add, edit, delete; change price and compare-at price; badge label
 - **Users tab:** list all users, add new user (with/without admin access), toggle admin, delete user
 - **Settings tab:** set custom hero background image URL
-- **Image picker in product editor:** types product name → "Fetch Images" → shows 6–8 image candidates (local SVG art + loremflickr web images) → click to select; or paste any custom URL
+- **Image picker in product editor:** verified official-brand racket images appear for mapped products; other products accept a real manufacturer or retailer image URL
+- **Optional showcase media:** admins can add a YouTube video or second product image URL to any product
+- **Category slots:** Rackets, Shoes, Shuttlecocks, Strings, Grips, Kit Bags, Apparel, Socks, Accessories, Wristbands, Injury Support, Training & Fitness, Court Equipment, Stringing Tools, Recovery & Nutrition
 
 ## Architecture decisions
 
 - Fully browser-local so the complete shopping/admin interaction works without provisioning services
-- SVG placeholder art for products; admins can fetch real images or paste URLs via the product editor
-- Admin password is intentionally simple (user's explicit request); not production-safe
-- loremflickr.com used for web image candidates in admin — free, no auth, relevant stock photos
+- Racket imagery uses official Yonex and Li-Ning product image hosts where mapped; placeholders remain only as broken-image fallbacks
+- Checkout stays blocked until a real payment provider is connected; it never claims a local/demo order was paid
 
 ## User preferences
 
@@ -63,5 +64,5 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 ## Gotchas
 
 - Vite build requires `PORT` and `BASE_PATH` env vars — the workflow sets both
-- localStorage is keyed `bb-products-v2` and `bb-users-v2` (v2 to avoid conflicts with old demo data)
+- localStorage is keyed `bb-products-v3` and `bb-users-v2` (v3 to avoid conflicts with old demo data)
 - Admin u-admin cannot be deleted or have admin revoked from the UI

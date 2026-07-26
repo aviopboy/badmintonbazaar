@@ -10,7 +10,9 @@ import "./index.css";
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
   | "Rackets" | "Shoes" | "Shuttlecocks" | "Strings" | "Grips"
-  | "Kit Bags" | "Apparel" | "Socks" | "Accessories";
+  | "Kit Bags" | "Apparel" | "Socks" | "Accessories"
+  | "Wristbands" | "Injury Support" | "Training & Fitness"
+  | "Court Equipment" | "Stringing Tools" | "Recovery & Nutrition";
 
 type Product = {
   id: string; name: string; brand: string; category: Category;
@@ -27,7 +29,9 @@ type Modal = "auth" | "product" | "cart" | "checkout" | "add-user" | null;
 /* ─── Category metadata ──────────────────────────────────────── */
 const ALL_CATEGORIES: Category[] = [
   "Rackets", "Shoes", "Shuttlecocks", "Strings", "Grips",
-  "Kit Bags", "Apparel", "Socks", "Accessories",
+  "Kit Bags", "Apparel", "Socks", "Accessories", "Wristbands",
+  "Injury Support", "Training & Fitness", "Court Equipment",
+  "Stringing Tools", "Recovery & Nutrition",
 ];
 
 /* ─── SVG Placeholder fallbacks ─────────────────────────────── */
@@ -47,44 +51,70 @@ const svgArt = (kind: "racket" | "shoe" | "shuttle" | "bag" | "apparel" | "acces
 /* ─── Seed products ──────────────────────────────────────────── */
 const Y = "https://www.yonex.com/media/catalog/product";
 const V = "https://www.victorsport.com/media/catalog/product";
-const DIN = "https://www.decathlon.in/dw/image/v2/BKCK_PRD/on/demandware.static/-/Library-Sites-SharedLibrary/default/dw/badminton";
+
+const officialRacketImages: Record<string, string[]> = {
+  "astrox 100 zz": [
+    "https://www.yonex.com/us/media/catalog/product/a/s/astrox100zz_kurenai.png?quality=80&fit=bounds&height=819&width=600&canvas=600:819",
+    "https://www.yonex.com/media/catalog/product/a/s/astrox100zz_kurenai.png?quality=80&bg-color=248,248,248,0.75&fit=bounds&height=819&width=600&canvas=600:819",
+  ],
+  "nanoflare 1000 z": [
+    "https://www.yonex.com/us/media/catalog/product/n/a/nanoflare_1000_z.png?quality=80&fit=bounds&height=819&width=600&canvas=600:819",
+    "https://us.yonex.com/cdn/shop/files/NANOFLARE_1000_product.jpg?v=1760045976&width=1445",
+  ],
+  "astrox 99": [
+    "https://us.yonex.com/cdn/shop/files/ax99-pro_whitetiger.png?v=1756957305&width=1445",
+    "https://www.yonex.com/media/catalog/product/a/l/all_3ax99-p_530-1.jpg?quality=80&fit=bounds&height=819&width=600",
+  ],
+  "axforce cannon": [
+    "https://in.lining.studio/cdn/shop/files/1_1_6f11ebfee3_5bb87cd7-879d-4214-a230-899cf265d399.jpg?v=1749898570&width=1200",
+    "https://in.lining.studio/cdn/shop/files/1_2_1e27243f21_3b97da4c-f81b-4605-9ca9-ad477b4cfe36.jpg?v=1749898570&width=1200",
+    "https://in.lining.studio/cdn/shop/files/1_3_c06ad9f076_4f5704e8-e9b9-43da-b687-f2e399adb43e.jpg?v=1749898570&width=1200",
+  ],
+  "axforce 100": [
+    "https://in.lining.studio/cdn/shop/files/1_379e72d6ad_7d5cd489-e18b-48c5-966b-d7c29b941212.jpg?v=1749897618&width=1200",
+    "https://in.lining.studio/cdn/shop/files/2_8230d822ad_3f2f63d5-1c74-41ad-b30b-924d09dd6aa8.jpg?v=1749897618&width=1200",
+    "https://in.lining.studio/cdn/shop/files/3_039601b024_650ee032-5dd1-4746-af9d-69a8d82bd9fd.jpg?v=1749897617&width=1200",
+  ],
+};
 
 const initialProducts: Product[] = [
   // ── Rackets ──
   {
     id: "p-astrox-100-zz", name: "ASTROX 100 ZZ", brand: "Yonex", category: "Rackets",
     price: 16990, compareAt: 19990, featured: true, badge: "Best Seller",
-    image: `${Y}/a/x/ax100zz-366.jpg`,
-    showcase: `${Y}/a/x/ax100zz_2.jpg`,
+    image: officialRacketImages["astrox 100 zz"][0],
+    showcase: officialRacketImages["astrox 100 zz"][1],
     description: "The definitive smash weapon. Head-heavy balance with Rotational Generator System delivers devastating attack power from the back court. Favoured by the world's best including Kento Momota.",
     tags: ["head heavy", "4U", "stiff", "attack"],
   },
   {
     id: "p-nanoflare-1000-z", name: "NANOFLARE 1000 Z", brand: "Yonex", category: "Rackets",
     price: 15490, compareAt: 17990, featured: true, badge: "New",
-    image: `${Y}/n/f/nf1000z-366.jpg`,
-    showcase: `${Y}/n/f/nf1000z_2.jpg`,
+    image: officialRacketImages["nanoflare 1000 z"][0],
+    showcase: officialRacketImages["nanoflare 1000 z"][1],
     description: "Fastest in the Nanoflare family. M-shaped frame slices through the air for instant shuttle acceleration. Built for counter-punchers who take the shuttle early.",
     tags: ["head light", "4U", "speed", "quick"],
   },
   {
     id: "p-axforce-canon", name: "AXFORCE CANNON", brand: "Li-Ning", category: "Rackets",
     price: 12490, compareAt: 14990, featured: true,
-    image: `${DIN}/li-ning-axforce-cannon.jpg`,
+    image: "https://in.lining.studio/cdn/shop/files/1_1_6f11ebfee3_5bb87cd7-879d-4214-a230-899cf265d399.jpg?v=1749898570&width=1200",
+    showcase: "https://in.lining.studio/cdn/shop/files/1_2_1e27243f21_3b97da4c-f81b-4605-9ca9-ad477b4cfe36.jpg?v=1749898570&width=1200",
     description: "Explosive doubles power. Carbon Fibre Box Beam technology delivers maximum stability at impact. A serious weapon for competitive doubles play.",
     tags: ["head heavy", "4U", "power", "doubles"],
   },
   {
     id: "p-axforce-100", name: "AXFORCE 100", brand: "Li-Ning", category: "Rackets",
     price: 10990, compareAt: 12490,
-    image: svgArt("racket", "#454b49", "#d9a441"),
+    image: "https://in.lining.studio/cdn/shop/files/1_379e72d6ad_7d5cd489-e18b-48c5-966b-d7c29b941212.jpg?v=1749897618&width=1200",
+    showcase: "https://in.lining.studio/cdn/shop/files/2_8230d822ad_3f2f63d5-1c74-41ad-b30b-924d09dd6aa8.jpg?v=1749897618&width=1200",
     description: "Precision-engineered for all-court control. Even-balanced frame with flexible shaft gives complete command from net to baseline.",
     tags: ["balanced", "3U", "control", "all-court"],
   },
   {
     id: "p-astrox-99", name: "ASTROX 99", brand: "Yonex", category: "Rackets",
     price: 13990, compareAt: 15490,
-    image: `${Y}/a/x/ax99-366.jpg`,
+    image: officialRacketImages["astrox 99"][0],
     description: "Engineered for the aggressive baseliner. NAMD graphite technology generates explosive repulsion from deep court drives and steep smashes.",
     tags: ["head heavy", "3U/4U", "stiff", "power"],
   },
@@ -291,23 +321,31 @@ function youtubeEmbedUrl(url: string) {
 /* ─── Image fetch helpers ────────────────────────────────────── */
 function buildImageCandidates(name: string, category: Category): { label: string; url: string }[] {
   const key = name.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
-  const catWord = {
-    "Rackets": "racket", "Shoes": "badminton+shoe", "Shuttlecocks": "shuttlecock",
-    "Strings": "badminton+string", "Grips": "badminton+grip", "Kit Bags": "badminton+bag",
-    "Apparel": "badminton+shirt", "Socks": "sport+sock", "Accessories": "badminton+accessory",
-  }[category] ?? "badminton";
-  const brand = key.split(" ")[0];
-  return [1, 3, 7, 11, 17, 23, 31, 37].map((s, i) => ({
-    label: `Option ${i + 1}`,
-    url: `https://loremflickr.com/600/600/${catWord},${brand}?lock=${s}`,
-  }));
+  const images = officialRacketImages[key];
+  if (category === "Rackets" && images) {
+    return images.map((url, index) => ({ label: `Official image ${index + 1}`, url }));
+  }
+  return [];
 }
 
 /* ════════════════════════════════════════════════════════════════
    ROOT APP COMPONENT
 ══════════════════════════════════════════════════════════════════ */
 function App() {
-  const [products, setProducts] = useState<Product[]>(() => storage.get("bb-products-v3", initialProducts));
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = storage.get<Product[]>("bb-products-v3", initialProducts);
+    const legacyImages: Record<string, string> = {
+      "p-astrox-100-zz": `${Y}/a/x/ax100zz-366.jpg`,
+      "p-nanoflare-1000-z": `${Y}/n/f/nf1000z-366.jpg`,
+      "p-astrox-99": `${Y}/a/x/ax99-366.jpg`,
+    };
+    return saved.map((product) => {
+      const official = officialRacketImages[product.name.toLowerCase()];
+      return official && (product.image === legacyImages[product.id] || product.image.startsWith("data:image/"))
+        ? { ...product, image: official[0], showcase: product.showcase ?? official[1] }
+        : product;
+    });
+  });
   const [users, setUsers] = useState<User[]>(() => {
     const saved = storage.get<User[]>("bb-users-v2", seedUsers);
     return saved.some((u) => u.id === "u-admin") ? saved : [seedUsers[0], ...saved];
@@ -454,7 +492,7 @@ function App() {
         <AuthModal mode={authMode} setMode={(m) => { setAuthMode(m); setAuthError(""); }} close={() => setModal(null)} submit={onAuth} error={authError} />
       )}
       {modal === "checkout" && (
-        <CheckoutModal close={() => setModal(null)} total={cartTotal} clearCart={() => setCart([])} toast={toast} />
+        <CheckoutModal close={() => setModal(null)} total={cartTotal} />
       )}
       {modal === "add-user" && currentUser?.admin && (
         <AddUserModal close={() => setModal(null)} users={users} setUsers={setUsers} toast={toast} />
@@ -580,7 +618,7 @@ function Storefront({ products, allProducts, category, setCategory, sort, setSor
           </button>
         </div>
         <div className="hero-racket-art" aria-hidden="true">
-          <img src={`${Y}/a/x/ax100zz-366.jpg`} alt="" onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#b9e532", "#fff"); }} />
+          <img src={officialRacketImages["astrox 100 zz"][0]} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
         </div>
       </section>
 
@@ -793,7 +831,7 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
             <button className="btn-primary btn-full" onClick={() => { if (requireAuth()) { close(); setModal("checkout"); } }} data-testid="button-checkout">
               <CreditCard size={16} /> Proceed to Checkout
             </button>
-            <p className="demo-note">Secure checkout — your data is safe with us.</p>
+            <p className="demo-note">Live payments are not connected yet. No payment will be collected.</p>
           </div>
         )}
       </aside>
@@ -859,43 +897,23 @@ function AuthModal({ mode, setMode, close, submit, error }: {
 }
 
 /* ─── Checkout Modal ─────────────────────────────────────────── */
-function CheckoutModal({ close, total, clearCart, toast }: {
-  close: () => void; total: number; clearCart: () => void; toast: (msg: string) => void;
-}) {
-  const [done, setDone] = useState(false);
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
-
-  if (done) return (
-    <div className="modal-backdrop">
-      <section className="modal" role="dialog" data-testid="modal-checkout-success">
-        <div className="success-body">
-          <div className="success-icon"><Check size={32} /></div>
-          <h2>Order Placed!</h2>
-          <p>Your order for <strong>{money(total)}</strong> has been confirmed. We'll be in touch soon.</p>
-          <button className="btn-primary" onClick={close} data-testid="button-close-success">Back to Store</button>
-        </div>
-      </section>
-    </div>
-  );
-
+function CheckoutModal({ close, total }: { close: () => void; total: number }) {
   return (
     <div className="modal-backdrop">
       <section className="modal" role="dialog" data-testid="modal-checkout">
         <button className="modal-close" onClick={close} data-testid="button-close-checkout"><X size={20} /></button>
-        <div className="modal-header-block"><h2>Checkout</h2></div>
-        <div className="modal-form">
-          <div className="field">
-            <label htmlFor="checkout-address">Delivery Address</label>
-            <textarea id="checkout-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Flat, street, city, PIN code" data-testid="input-checkout-address" />
-          </div>
-          <div className="field">
-            <label htmlFor="checkout-phone">Phone Number</label>
-            <input id="checkout-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" data-testid="input-checkout-phone" />
-          </div>
-          <div className="order-total-row"><span>Order Total</span><strong>{money(total)}</strong></div>
-          <button className="btn-primary btn-full" onClick={() => { setDone(true); clearCart(); toast("Order placed successfully!"); }} data-testid="button-place-order">
-            Place Order
+        <div className="checkout-block">
+          <div className="checkout-status-icon"><CreditCard size={28} /></div>
+          <p className="eyebrow">Payment setup required</p>
+          <h2>UPI checkout is not connected</h2>
+          <p className="checkout-message">
+            Your bag total is <strong>{money(total)}</strong>. The store is not connected to a merchant payment provider yet, so no payment or order will be collected.
+          </p>
+          <p className="checkout-message">
+            Connect Shopify and enable UPI in the merchant payment settings to turn this into a real checkout.
+          </p>
+          <button className="btn-ghost btn-full" onClick={close} data-testid="button-close-unconfigured-checkout">
+            Back to Bag
           </button>
         </div>
       </section>
@@ -1029,7 +1047,6 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, t
   const [activeTab, setActiveTab] = useState<"products" | "users" | "settings">("products");
   const [bgUrl, setBgUrl] = useState(heroBackground);
   // Non-admin users only (admin accounts hidden from public display)
-  const regularUsers = users.filter((u) => !u.admin);
   const allDisplayUsers = users; // admin sees all
 
   return (
@@ -1043,7 +1060,7 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, t
         </div>
         <div className="stats-row">
           <div className="stat-card"><span>Products</span><strong data-testid="stat-product-count">{products.length}</strong></div>
-          <div className="stat-card"><span>Registered Users</span><strong data-testid="stat-user-count">{regularUsers.length}</strong></div>
+          <div className="stat-card"><span>Registered Users</span><strong data-testid="stat-user-count">{users.filter((u) => !u.admin).length}</strong></div>
           <div className="stat-card"><span>Admin Accounts</span><strong data-testid="stat-admin-count">{users.filter((u) => u.admin).length}</strong></div>
         </div>
 
@@ -1192,8 +1209,8 @@ function ProductEditor({ product, close, save }: {
             <div className="field"><label htmlFor="pe-tags">Tags (comma separated)</label><input id="pe-tags" value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} placeholder="e.g. head heavy, 4U, stiff" data-testid="input-product-tags" /></div>
             <div className="field">
               <label htmlFor="pe-showcase"><Video size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />Showcase URL (optional)</label>
-              <input id="pe-showcase" value={draft.showcase ?? ""} onChange={(e) => set("showcase", e.target.value || undefined)} placeholder="YouTube URL or direct image URL" data-testid="input-product-showcase" />
-              <span className="field-hint">Paste a YouTube link or an extra product image URL. Customers can switch between main photo and showcase.</span>
+              <input id="pe-showcase" value={draft.showcase ?? ""} onChange={(e) => set("showcase", e.target.value || undefined)} placeholder="Optional YouTube URL or image URL" data-testid="input-product-showcase" />
+              <span className="field-hint">Optional: paste a YouTube link or a second product image. Leave blank to show only the main product photo.</span>
             </div>
             <div className="field-check">
               <input id="pe-featured" type="checkbox" checked={!!draft.featured} onChange={(e) => set("featured", e.target.checked)} />
@@ -1209,7 +1226,7 @@ function ProductEditor({ product, close, save }: {
             <button type="button" className="btn-fetch-imgs" onClick={fetchImages} disabled={!draft.name.trim() || loadingImgs} data-testid="button-fetch-images">
               {loadingImgs ? <><Loader2 size={15} className="spin" /> Fetching…</> : <><RefreshCw size={15} /> Fetch Images</>}
             </button>
-            <p className="img-hint">Enter the product name, then click Fetch Images to see options.</p>
+            <p className="img-hint">{draft.category === "Rackets" ? "Verified official-brand images appear for mapped racket names. No generated images are used." : "No generated image suggestions are used. Paste a real manufacturer or retailer image URL below."}</p>
             {candidates.length > 0 && (
               <div className="candidates-grid">
                 {candidates.map((c, i) => (
@@ -1221,7 +1238,7 @@ function ProductEditor({ product, close, save }: {
               </div>
             )}
             <div className="field" style={{ marginTop: 12 }}>
-              <label htmlFor="pe-custom-url">Or paste image URL directly</label>
+              <label htmlFor="pe-custom-url">Paste a real product image URL</label>
               <div className="custom-url-row">
                 <input id="pe-custom-url" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://…" data-testid="input-product-image-url" />
                 <button type="button" className="btn-ghost-sm" onClick={() => { if (customUrl) { set("image", customUrl); setCustomUrl(""); } }}>Use</button>
@@ -1256,7 +1273,7 @@ function SiteFooter({ setView, setCategory }: { setView: (v: View) => void; setC
           </div>
           <div>
             <strong>More</strong>
-            {["Kit Bags", "Apparel", "Socks", "Accessories"].map((c) => (
+            {["Kit Bags", "Apparel", "Socks", "Accessories", "Wristbands", "Injury Support", "Training & Fitness", "Court Equipment", "Stringing Tools", "Recovery & Nutrition"].map((c) => (
               <button key={c} onClick={() => { setView("store"); setCategory(c as Category); }}>{c}</button>
             ))}
           </div>
