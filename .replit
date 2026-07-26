@@ -11,6 +11,23 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Badminton Bazaar"
+
+[[workflows.workflow]]
+name = "Badminton Bazaar"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=26050 BASE_PATH=/ pnpm --filter @workspace/badminton-bazaar run dev"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
