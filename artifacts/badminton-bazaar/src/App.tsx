@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight, BadgeCheck, Check, ChevronDown, CreditCard, Edit3, Heart,
   LayoutDashboard, Loader2, Minus, Package, Play, Plus, Search,
-  ShieldCheck, ShoppingBag, Sparkles, Trash2, Truck, UserPlus, UserRound,
+  ShieldCheck, ShoppingBag, Sparkles, Trash2, Truck, Upload, UserPlus, UserRound,
   X, Eye, EyeOff, RefreshCw, Video,
 } from "lucide-react";
 import "./index.css";
+import logoImg from "@assets/image_1785068893314.png";
+import qrImg from "@assets/image_1785068900913.png";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -318,6 +320,16 @@ function youtubeEmbedUrl(url: string) {
   return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0` : null;
 }
 
+/* ─── Category → SVG kind ────────────────────────────────────── */
+function categoryToSvgKind(category: Category): "racket" | "shoe" | "shuttle" | "bag" | "apparel" | "accessory" {
+  if (category === "Rackets" || category === "Strings" || category === "Grips" || category === "Stringing Tools") return "racket";
+  if (category === "Shoes" || category === "Socks") return "shoe";
+  if (category === "Shuttlecocks") return "shuttle";
+  if (category === "Kit Bags") return "bag";
+  if (category === "Apparel") return "apparel";
+  return "accessory";
+}
+
 /* ─── Image fetch helpers ────────────────────────────────────── */
 function buildImageCandidates(name: string, category: Category): { label: string; url: string }[] {
   const key = name.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
@@ -364,6 +376,8 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  const clearCart = () => setCart([]);
 
   useEffect(() => storage.set("bb-products-v3", products), [products]);
   useEffect(() => storage.set("bb-users-v2", users), [users]);
@@ -492,7 +506,7 @@ function App() {
         <AuthModal mode={authMode} setMode={(m) => { setAuthMode(m); setAuthError(""); }} close={() => setModal(null)} submit={onAuth} error={authError} />
       )}
       {modal === "checkout" && (
-        <CheckoutModal close={() => setModal(null)} total={cartTotal} />
+        <CheckoutModal close={() => setModal(null)} total={cartTotal} clearCart={clearCart} />
       )}
       {modal === "add-user" && currentUser?.admin && (
         <AddUserModal close={() => setModal(null)} users={users} setUsers={setUsers} toast={toast} />
@@ -533,10 +547,10 @@ function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, vi
       <nav className="nav-main">
         <div className="nav-inner">
           <button className="brand-btn" onClick={() => { setView("store"); setCategory("All"); }} data-testid="button-home">
-            <span className="brand-mark">B</span>
+            <img src={logoImg} alt="Badminton Bazaar" className="brand-logo-img" />
             <div className="brand-text">
               <span className="brand-name">Badminton Bazaar</span>
-              <span className="brand-tagline">Play it sharp</span>
+              <span className="brand-tagline">Play More. Win More.</span>
             </div>
           </button>
 
@@ -701,7 +715,7 @@ function ProductCard({ product, openProduct, addToCart, isWishlisted, toggleWish
           <Heart size={16} fill={isWishlisted ? "currentColor" : "none"} />
         </button>
         <button className="img-btn" onClick={() => openProduct(product)} data-testid={`button-view-product-${product.id}`}>
-          <img src={product.image} alt={product.name} loading="lazy" onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#59635a"); }} />
+          <img src={product.image} alt={product.name} loading="lazy" onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(product.category), "#59635a"); }} />
         </button>
       </div>
       <div className="product-body">
@@ -733,11 +747,11 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
         <div className="modal-product-layout">
           <div className="modal-product-img">
             {!showShowcase || !product.showcase ? (
-              <img src={product.image} alt={product.name} onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#59635a"); }} />
+              <img src={product.image} alt={product.name} onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(product.category), "#59635a"); }} />
             ) : embedUrl ? (
               <iframe src={embedUrl} title="Product video" allowFullScreen className="showcase-iframe" />
             ) : (
-              <img src={product.showcase} alt={`${product.name} showcase`} onError={(e) => { (e.target as HTMLImageElement).src = product.image; }} />
+              <img src={product.showcase} alt={`${product.name} showcase`} onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(product.category), "#59635a"); }} />
             )}
             {product.showcase && (
               <div className="showcase-toggle-row">
@@ -805,7 +819,7 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
                 return (
                   <div className="cart-line" key={line.productId} data-testid={`row-cart-${line.productId}`}>
                     <button className="cart-img-btn" onClick={() => { close(); openProduct(p); }}>
-                      <img src={p.image} alt={p.name} onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#59635a"); }} />
+                      <img src={p.image} alt={p.name} onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(p.category), "#59635a"); }} />
                     </button>
                     <div className="cart-line-info">
                       <h4>{p.name}</h4>
@@ -831,7 +845,7 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
             <button className="btn-primary btn-full" onClick={() => { if (requireAuth()) { close(); setModal("checkout"); } }} data-testid="button-checkout">
               <CreditCard size={16} /> Proceed to Checkout
             </button>
-            <p className="demo-note">Live payments are not connected yet. No payment will be collected.</p>
+            <p className="demo-note">Pay securely via UPI on the next step.</p>
           </div>
         )}
       </aside>
@@ -896,25 +910,82 @@ function AuthModal({ mode, setMode, close, submit, error }: {
   );
 }
 
-/* ─── Checkout Modal ─────────────────────────────────────────── */
-function CheckoutModal({ close, total }: { close: () => void; total: number }) {
+/* ─── Checkout Modal — 3-step UPI flow ───────────────────────── */
+function CheckoutModal({ close, total, clearCart }: { close: () => void; total: number; clearCart: () => void }) {
+  const [step, setStep] = useState<"summary" | "payment" | "success">("summary");
+  const deliveryDays = "5–7 business days";
+
+  if (step === "success") {
+    return (
+      <div className="modal-backdrop">
+        <section className="modal" role="dialog" data-testid="modal-checkout">
+          <div className="success-body">
+            <div className="success-icon"><Check size={30} /></div>
+            <h2>Order Confirmed!</h2>
+            <p style={{ fontSize: 15, color: "rgb(var(--paper-bright))", fontWeight: 600 }}>
+              Thank you for your purchase.
+            </p>
+            <p>Your product will arrive in <strong>{deliveryDays}</strong>.</p>
+            <p style={{ fontSize: 12 }}>
+              We'll notify you once your order is dispatched. If you have any questions, contact us via Instagram or WhatsApp.
+            </p>
+            <button className="btn-primary btn-full" onClick={() => { clearCart(); close(); }} data-testid="button-close-checkout-success">
+              Back to Store
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (step === "payment") {
+    return (
+      <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+        <section className="modal" role="dialog" data-testid="modal-checkout">
+          <button className="modal-close" onClick={close} data-testid="button-close-checkout"><X size={20} /></button>
+          <div className="upi-payment-block">
+            <p className="eyebrow" style={{ padding: "24px 28px 0", marginBottom: 4 }}>Step 2 of 2</p>
+            <h2 style={{ fontFamily: "var(--app-font-display)", fontSize: 32, textTransform: "uppercase", padding: "0 28px 16px" }}>Pay via UPI</h2>
+            <div className="upi-amount-bar">
+              <span>Total to pay</span>
+              <strong>{money(total)}</strong>
+            </div>
+            <div className="upi-qr-wrap">
+              <img src={qrImg} alt="UPI QR Code — Jignesh Makwana" className="upi-qr-img" />
+              <p className="upi-id-line">UPI ID: <strong>jignesh32@ptaxis</strong></p>
+              <p className="upi-hint">Scan the QR with any UPI app — Paytm, PhonePe, Google Pay, BHIM</p>
+            </div>
+            <div style={{ padding: "0 28px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <button className="btn-primary btn-full" onClick={() => setStep("success")} data-testid="button-confirm-payment">
+                <Check size={16} /> I Have Paid — Confirm Order
+              </button>
+              <button className="btn-ghost btn-full" onClick={() => setStep("summary")}>← Back to Summary</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // step === "summary"
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
       <section className="modal" role="dialog" data-testid="modal-checkout">
         <button className="modal-close" onClick={close} data-testid="button-close-checkout"><X size={20} /></button>
         <div className="checkout-block">
-          <div className="checkout-status-icon"><CreditCard size={28} /></div>
-          <p className="eyebrow">Payment setup required</p>
-          <h2>UPI checkout is not connected</h2>
-          <p className="checkout-message">
-            Your bag total is <strong>{money(total)}</strong>. The store is not connected to a merchant payment provider yet, so no payment or order will be collected.
+          <p className="eyebrow" style={{ marginBottom: 4 }}>Step 1 of 2</p>
+          <h2 style={{ fontFamily: "var(--app-font-display)", fontSize: 32, textTransform: "uppercase", marginBottom: 20 }}>Order Summary</h2>
+          <div className="checkout-total-row">
+            <span>Order Total</span>
+            <strong>{money(total)}</strong>
+          </div>
+          <p className="checkout-message" style={{ marginBottom: 20 }}>
+            Review your total above. On the next step you'll see our UPI QR code to complete payment.
           </p>
-          <p className="checkout-message">
-            Connect Shopify and enable UPI in the merchant payment settings to turn this into a real checkout.
-          </p>
-          <button className="btn-ghost btn-full" onClick={close} data-testid="button-close-unconfigured-checkout">
-            Back to Bag
+          <button className="btn-primary btn-full" onClick={() => setStep("payment")} data-testid="button-proceed-to-payment">
+            <CreditCard size={16} /> Proceed to UPI Payment
           </button>
+          <button className="btn-ghost btn-full" style={{ marginTop: 10 }} onClick={close}>Cancel</button>
         </div>
       </section>
     </div>
@@ -1081,7 +1152,7 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, t
                 <tbody>
                   {products.map((p) => (
                     <tr key={p.id} data-testid={`row-admin-product-${p.id}`}>
-                      <td><div className="table-product"><img src={p.image} alt="" onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#59635a"); }} /><strong>{p.name}</strong></div></td>
+                      <td><div className="table-product"><img src={p.image} alt="" onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(p.category), "#59635a"); }} /><strong>{p.name}</strong></div></td>
                       <td>{p.brand}</td>
                       <td><span className="cat-pill">{p.category}</span></td>
                       <td>{money(p.price)}</td>
@@ -1221,8 +1292,34 @@ function ProductEditor({ product, close, save }: {
           <div className="image-picker-panel">
             <h3>Product Image</h3>
             <div className="current-img-wrap">
-              <img src={draft.image} alt="Current" onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#59635a"); }} />
+              <img src={draft.image} alt="Current" onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(draft.category), "#59635a"); }} />
             </div>
+
+            {/* Upload own image */}
+            <div className="upload-img-section">
+              <label htmlFor="pe-upload" className="btn-upload-img">
+                <Upload size={14} /> Upload Image (optional)
+              </label>
+              <input
+                id="pe-upload"
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const dataUrl = ev.target?.result as string;
+                    if (dataUrl) set("image", dataUrl);
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }}
+              />
+              <p className="img-hint" style={{ marginTop: 6 }}>Select a local image from your device to use as the product photo.</p>
+            </div>
+
             <button type="button" className="btn-fetch-imgs" onClick={fetchImages} disabled={!draft.name.trim() || loadingImgs} data-testid="button-fetch-images">
               {loadingImgs ? <><Loader2 size={15} className="spin" /> Fetching…</> : <><RefreshCw size={15} /> Fetch Images</>}
             </button>
@@ -1231,14 +1328,14 @@ function ProductEditor({ product, close, save }: {
               <div className="candidates-grid">
                 {candidates.map((c, i) => (
                   <button type="button" key={i} className={`candidate-btn ${draft.image === c.url ? "selected" : ""}`} onClick={() => set("image", c.url)} data-testid={`button-image-candidate-${i}`}>
-                    <img src={c.url} alt={c.label} loading="lazy" onError={(e) => { (e.target as HTMLImageElement).src = svgArt("racket", "#59635a"); }} />
+                    <img src={c.url} alt={c.label} loading="lazy" onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(draft.category), "#59635a"); }} />
                     {draft.image === c.url && <span className="candidate-check"><Check size={14} /></span>}
                   </button>
                 ))}
               </div>
             )}
             <div className="field" style={{ marginTop: 12 }}>
-              <label htmlFor="pe-custom-url">Paste a real product image URL</label>
+              <label htmlFor="pe-custom-url">Paste a product image URL</label>
               <div className="custom-url-row">
                 <input id="pe-custom-url" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://…" data-testid="input-product-image-url" />
                 <button type="button" className="btn-ghost-sm" onClick={() => { if (customUrl) { set("image", customUrl); setCustomUrl(""); } }}>Use</button>
@@ -1261,8 +1358,8 @@ function SiteFooter({ setView, setCategory }: { setView: (v: View) => void; setC
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-brand">
-          <span className="brand-mark sm">B</span>
-          <div><strong>Badminton Bazaar</strong><span>The focused gear counter for India's courts.</span></div>
+          <img src={logoImg} alt="Badminton Bazaar" className="footer-logo-img" />
+          <div><strong>Badminton Bazaar</strong><span>Play More. Win More.</span></div>
         </div>
         <div className="footer-links">
           <div>
