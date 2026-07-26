@@ -1,44 +1,49 @@
-# [Project name]
+# Badminton Bazaar
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A self-contained badminton gear storefront demo with local catalog, account, cart, and admin controls.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/badminton-bazaar run dev` — run the storefront (the managed workflow supplies `PORT` and `BASE_PATH`)
+- `pnpm --filter @workspace/badminton-bazaar run typecheck` — typecheck the storefront
+- `PORT=26050 BASE_PATH=/ pnpm --filter @workspace/badminton-bazaar run build` — build the storefront locally
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- The storefront persists demo catalog, accounts, cart, favorites, and preferences in browser localStorage.
+- Demo admin login: `avilit9@gmail.com` / `admin` (intentionally browser-local demo credentials, not production authentication).
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- React + Vite, Tailwind CSS, lucide-react
+- Browser-local demo state; no Shopify, payment provider, or external commerce dependency
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/badminton-bazaar/src/App.tsx` — storefront, catalog state, auth, cart, account, and admin flows
+- `artifacts/badminton-bazaar/src/index.css` — Badminton Bazaar visual theme and responsive layout
+- `artifacts/badminton-bazaar/.replit-artifact/artifact.toml` — root web artifact and managed workflow
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first version is intentionally browser-local so the complete shopping/admin interaction can be explored without provisioning commerce services.
+- Product image lookup is a curated local candidate picker rather than a live image API; it works without API keys and avoids silently copying third-party images.
+- The seeded administrator is clearly presented as a demo account and should be replaced with server-backed authentication before handling real users or payments.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Browse and search rackets and shoes with INR pricing, filters, sorting, favorites, product details, and a cart.
+- Register/sign in, update account email/password, and pass an auth gate before checkout.
+- Admins can manage users, product records, prices, product image candidates, and storefront background treatments.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep the brand name Badminton Bazaar and the logo as the letter B for now.
+- Do not use Shopify or another hosted commerce platform.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The Vite build config requires `PORT` and `BASE_PATH`; use the managed workflow or set both for manual builds.
+- The demo admin password is intentionally simple at the user's request; do not treat this localStorage implementation as production auth.
 
 ## Pointers
 
