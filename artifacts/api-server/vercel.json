@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "node ./build.mjs",
+  "buildCommand": "node ./build.mjs && mkdir -p public",
   "functions": {
     "api/index.js": {
       "maxDuration": 30
