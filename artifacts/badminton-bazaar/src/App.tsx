@@ -9,7 +9,7 @@ import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
 import { sendOrderEmail, sendStatusEmail } from "./lib/email";
-import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder } from "@workspace/api-client-react";
+import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder } from "@workspace/api-client-react";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -526,13 +526,20 @@ function App() {
     // Add to local state and clear cart immediately — don't wait for API
     setOrders((prev) => [order, ...prev.filter((existing) => existing.id !== order.id)]);
     clearCart();
-    // Save to shared database in the background; failures are logged but don't block checkout
+    // Back up to localStorage so the order survives a page refresh and retries
+    // on next login if the API save fails (the syncOrders effect will pick it up)
+    const backup = storage.get<Order[]>("bb-orders-v1", []);
+    storage.set("bb-orders-v1", [order, ...backup.filter((o) => o.id !== order.id)]);
+    // Save to shared database in the background
     createSharedOrder(order)
       .then((sharedOrder) => {
         setOrders((prev) => prev.map((o) => o.id === sharedOrder.id ? sharedOrder : o));
+        // Confirmed in DB — remove from localStorage backup
+        const current = storage.get<Order[]>("bb-orders-v1", []);
+        storage.set("bb-orders-v1", current.filter((o) => o.id !== sharedOrder.id));
       })
       .catch((err) => {
-        console.warn("[Badminton Bazaar] Background order sync failed (order is still saved locally):", err);
+        console.warn("[Badminton Bazaar] Background order sync failed — will retry on next login:", err);
       });
     toast(`Payment proof saved. Invoice ${order.id} is pending review.`);
     return order;
@@ -541,6 +548,11 @@ function App() {
   const updateOrder = async (id: string, status: OrderStatus, reviewMessage: string) => {
     const updated = await updateSharedOrder(id, { status, reviewMessage });
     setOrders((prev) => prev.map((order) => order.id === id ? updated : order));
+  };
+
+  const deleteOrder = async (id: string) => {
+    await deleteSharedOrder(id);
+    setOrders((prev) => prev.filter((order) => order.id !== id));
   };
 
   return (
@@ -575,7 +587,7 @@ function App() {
         <Admin products={products} users={users} setUsers={setUsers}
           heroBackground={heroBackground} setHeroBackground={setHeroBackground}
           founderEmail={founderEmail} setFounderEmail={setFounderEmail}
-          orders={orders} updateOrder={updateOrder}
+          orders={orders} updateOrder={updateOrder} deleteOrder={deleteOrder}
           toast={toast} modal={modal} setModal={setModal}
           editingProduct={editingProduct} setEditingProduct={setEditingProduct}
           saveProduct={saveProduct} deleteProduct={deleteProduct} />
@@ -1466,9 +1478,10 @@ function InvoiceCard({ order }: { order: Order }) {
   );
 }
 
-function OrderReviewCard({ order, updateOrder, toast }: {
+function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
   order: Order;
   updateOrder: (id: string, status: OrderStatus, message: string) => void;
+  deleteOrder: (id: string) => Promise<void>;
   toast: (msg: string, err?: boolean) => void;
 }) {
   const [step, setStep] = useState<"idle" | "approving" | "rejecting">("idle");
@@ -1636,7 +1649,23 @@ function OrderReviewCard({ order, updateOrder, toast }: {
       {!isPending && (
         <div className="review-complete">
           <span>{order.reviewMessage}</span>
-          <a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Contact customer</a>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Contact customer</a>
+            <button
+              className="btn-danger btn-small"
+              onClick={async () => {
+                if (!window.confirm(`Delete order ${order.id}? This cannot be undone.`)) return;
+                try {
+                  await deleteOrder(order.id);
+                  toast(`Order ${order.id} deleted.`);
+                } catch {
+                  toast(`Could not delete ${order.id}. Please try again.`, true);
+                }
+              }}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          </div>
         </div>
       )}
     </article>
@@ -1646,10 +1675,12 @@ function OrderReviewCard({ order, updateOrder, toast }: {
 /* ════════════════════════════════════════════════════════════════
    ADMIN PANEL
 ══════════════════════════════════════════════════════════════════ */
-function Admin({ products, users, setUsers, heroBackground, setHeroBackground, founderEmail, setFounderEmail, orders, updateOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct }: {
+function Admin({ products, users, setUsers, heroBackground, setHeroBackground, founderEmail, setFounderEmail, orders, updateOrder, deleteOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct }: {
   products: Product[]; users: User[]; setUsers: (v: User[]) => void;
   heroBackground: string; setHeroBackground: (v: string) => void;
-  founderEmail: string; setFounderEmail: (v: string) => void; orders: Order[]; updateOrder: (id: string, status: OrderStatus, message: string) => void;
+  founderEmail: string; setFounderEmail: (v: string) => void; orders: Order[];
+  updateOrder: (id: string, status: OrderStatus, message: string) => void;
+  deleteOrder: (id: string) => Promise<void>;
   toast: (msg: string, err?: boolean) => void; modal: Modal; setModal: (v: Modal) => void;
   editingProduct: Product | null; setEditingProduct: (p: Product | null) => void;
   saveProduct: (p: Product) => void; deleteProduct: (id: string) => void;
@@ -1688,7 +1719,7 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
             <div className="panel-header"><div><h2>Payment Review</h2><p className="panel-subtitle">Review the uploaded proof before contacting the customer or approving dispatch.</p></div><span className="panel-count">{orders.length} invoices</span></div>
             {orders.length === 0 ? <div className="empty-state admin-empty"><Package size={28} /><strong>No payment proofs yet</strong><span>New checkout submissions will appear here.</span></div> : (
               <div className="order-review-list">
-                {orders.map((order) => <OrderReviewCard key={order.id} order={order} updateOrder={updateOrder} toast={toast} />)}
+                {orders.map((order) => <OrderReviewCard key={order.id} order={order} updateOrder={updateOrder} deleteOrder={deleteOrder} toast={toast} />)}
               </div>
             )}
           </div>

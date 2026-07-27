@@ -99,4 +99,23 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
   res.json(UpdateOrderResponse.parse(toApiOrder(updated)));
 });
 
+router.delete("/orders/:id", async (req, res): Promise<void> => {
+  const params = UpdateOrderParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [deleted] = await db.delete(ordersTable)
+    .where(eq(ordersTable.id, params.data.id))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+
+  res.status(204).send();
+});
+
 export default router;
