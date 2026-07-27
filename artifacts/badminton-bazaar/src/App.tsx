@@ -9,6 +9,7 @@ import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
 import { sendOrderEmail, sendStatusEmail } from "./lib/email";
+import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder } from "@workspace/api-client-react";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -395,6 +396,7 @@ function App() {
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
   const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
   const [orders, setOrders] = useState<Order[]>(() => storage.get("bb-orders-v1", []));
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const clearCart = () => setCart([]);
@@ -406,7 +408,49 @@ function App() {
   useEffect(() => storage.set("bb-wishlist", wishlist), [wishlist]);
   useEffect(() => storage.set("bb-hero-bg", heroBackground), [heroBackground]);
   useEffect(() => storage.set("bb-founder-email", founderEmail), [founderEmail]);
-  useEffect(() => storage.set("bb-orders-v1", orders), [orders]);
+  useEffect(() => {
+    document.title = "Badminton Bazaar — Play More. Win More.";
+    let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!favicon) {
+      favicon = document.createElement("link");
+      favicon.rel = "icon";
+      document.head.appendChild(favicon);
+    }
+    favicon.type = "image/png";
+    favicon.href = logoImg;
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setOrdersLoaded(false);
+      return;
+    }
+
+    let cancelled = false;
+    const syncOrders = async () => {
+      try {
+        const localOrders = storage.get<Order[]>("bb-orders-v1", []);
+        if (localOrders.length > 0) {
+          await Promise.all(localOrders.map((order) => createSharedOrder(order)));
+        }
+        const sharedOrders = await listOrders(currentUser.admin ? undefined : { email: currentUser.email });
+        if (!cancelled) {
+          setOrders(sharedOrders);
+          setOrdersLoaded(true);
+        }
+      } catch (error) {
+        console.error("[Badminton Bazaar] Shared order sync failed:", error);
+        if (!cancelled) setOrdersLoaded(true);
+      }
+    };
+
+    void syncOrders();
+    const refreshTimer = window.setInterval(() => { void syncOrders(); }, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
+  }, [currentUser]);
 
   const toast = (message: string, error = false) => {
     const id = Date.now() + Math.random();
@@ -471,7 +515,7 @@ function App() {
     }
   };
 
-  const submitOrder = (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => {
+  const submitOrder = async (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => {
     const items = cart.flatMap((line) => {
       const product = products.find((p) => p.id === line.productId);
       return product ? [{ name: product.name, brand: product.brand, price: product.price, quantity: line.quantity }] : [];
@@ -486,14 +530,16 @@ function App() {
       items,
       total: cartTotal,
     };
-    setOrders((prev) => [order, ...prev]);
+    const sharedOrder = await createSharedOrder(order);
+    setOrders((prev) => [sharedOrder, ...prev.filter((existing) => existing.id !== sharedOrder.id)]);
     clearCart();
-    toast(`Payment proof saved. Invoice ${order.id} is pending review.`);
-    return order;
+    toast(`Payment proof saved to your account. Invoice ${sharedOrder.id} is pending review.`);
+    return sharedOrder;
   };
 
-  const updateOrder = (id: string, status: OrderStatus, reviewMessage: string) => {
-    setOrders((prev) => prev.map((order) => order.id === id ? { ...order, status, reviewMessage } : order));
+  const updateOrder = async (id: string, status: OrderStatus, reviewMessage: string) => {
+    const updated = await updateSharedOrder(id, { status, reviewMessage });
+    setOrders((prev) => prev.map((order) => order.id === id ? updated : order));
   };
 
   return (
@@ -511,7 +557,7 @@ function App() {
           toggleWishlist={toggleWishlist} heroBackground={heroBackground} />
       )}
       {view === "account" && currentUser && (
-        <Account user={currentUser} orders={orders.filter((order) => order.userId === currentUser.id)} updateUser={updateUser} signOut={signOut} toast={toast} />
+          <Account user={currentUser} orders={orders.filter((order) => order.userId === currentUser.id || order.email.toLowerCase() === currentUser.email.toLowerCase())} updateUser={updateUser} signOut={signOut} toast={toast} ordersLoaded={ordersLoaded} />
       )}
       {view === "account" && !currentUser && (
         <div className="gate-screen">
@@ -1043,7 +1089,7 @@ function CheckoutModal({
   user: User | null;
   items: { name: string; quantity: number; price: number }[];
   founderEmail: string;
-  submitOrder: (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => Order;
+  submitOrder: (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => Promise<Order>;
 }) {
   const [step, setStep] = useState<"details" | "payment" | "success">("details");
   const [name, setName] = useState(user?.name ?? "");
@@ -1079,15 +1125,23 @@ function CheckoutModal({
     if (!paymentProof) { setError("Upload a screenshot or image of your payment proof."); return; }
     setSending(true);
     setError("");
-    const order = submitOrder({
-      customerName: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      address: address.trim(),
-      additionalContact: additionalContact.trim(),
-      paymentReference: paymentReference.trim(),
-      paymentProof,
-    });
+    let order: Order;
+    try {
+      order = await submitOrder({
+        customerName: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        address: address.trim(),
+        additionalContact: additionalContact.trim(),
+        paymentReference: paymentReference.trim(),
+        paymentProof,
+      });
+    } catch (err) {
+      console.error("[Badminton Bazaar] Shared order save failed:", err);
+      setSending(false);
+      setError("We couldn't save your order to your account. Please try again.");
+      return;
+    }
     let sent = false;
     try {
       await sendOrderEmail({
@@ -1266,8 +1320,8 @@ function AddUserModal({ close, users, setUsers, toast }: {
 /* ════════════════════════════════════════════════════════════════
    ACCOUNT PAGE
 ══════════════════════════════════════════════════════════════════ */
-function Account({ user, orders, updateUser, signOut, toast }: {
-  user: User; orders: Order[]; updateUser: (u: User) => void; signOut: () => void; toast: (msg: string, err?: boolean) => void;
+function Account({ user, orders, updateUser, signOut, toast, ordersLoaded }: {
+  user: User; orders: Order[]; updateUser: (u: User) => void; signOut: () => void; toast: (msg: string, err?: boolean) => void; ordersLoaded: boolean;
 }) {
   const [newEmail, setNewEmail] = useState(user.email);
   const [newPassword, setNewPassword] = useState("");
@@ -1306,7 +1360,7 @@ function Account({ user, orders, updateUser, signOut, toast }: {
         <div className="account-cards">
           <section className="account-card">
             <h2><Package size={18} /> Order History</h2>
-            {orders.length === 0 ? <p className="card-desc">No orders yet. Shop our catalog to get started.</p> : (
+            {!ordersLoaded ? <p className="card-desc">Loading your shared order history…</p> : orders.length === 0 ? <p className="card-desc">No orders yet. Shop our catalog to get started.</p> : (
               <div className="order-list">
                 {orders.map((order) => (
                   <InvoiceCard key={order.id} order={order} />
@@ -1397,7 +1451,13 @@ function OrderReviewCard({ order, updateOrder, toast }: {
     if (!deliveryDate.trim()) return;
     setSending(true);
     const msg = `Your payment has been approved! Your order is being prepared for dispatch. Estimated delivery: ${deliveryDate}.`;
-    updateOrder(order.id, "approved", msg);
+    try {
+      await updateOrder(order.id, "approved", msg);
+    } catch {
+      toast(`${order.id} could not be approved. Please try again.`, true);
+      setSending(false);
+      return;
+    }
     try {
       await sendStatusEmail({
         customerEmail: order.email,
@@ -1419,7 +1479,13 @@ function OrderReviewCard({ order, updateOrder, toast }: {
   const confirmReject = async () => {
     setSending(true);
     const reason = rejectionReason.trim() || "We could not verify your payment. Please contact us so we can help complete your order.";
-    updateOrder(order.id, "rejected", reason);
+    try {
+      await updateOrder(order.id, "rejected", reason);
+    } catch {
+      toast(`${order.id} could not be rejected. Please try again.`, true);
+      setSending(false);
+      return;
+    }
     try {
       await sendStatusEmail({
         customerEmail: order.email,

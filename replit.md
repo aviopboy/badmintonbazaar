@@ -1,11 +1,13 @@
 # Badminton Bazaar
 
-A dark, sporty badminton gear storefront inspired by racketrush.in — with catalog, accounts, cart, and a full admin panel. All data is browser-local (localStorage). Email notifications are sent via EmailJS when a customer submits payment proof at checkout.
+A dark, sporty badminton gear storefront inspired by racketrush.in — with catalog, accounts, cart, and a full admin panel. Catalog preferences remain browser-local (localStorage), while orders are synced through the shared PostgreSQL-backed API so account history is available across devices. Email notifications are sent through formsubmit.co when a customer submits payment proof at checkout.
 
 ## Run & Operate
 
 - Workflow: **Badminton Bazaar** — `PORT=26050 BASE_PATH=/ pnpm --filter @workspace/badminton-bazaar run dev`
+- Workflow: **API Server** — `PORT=8080 pnpm --filter @workspace/api-server run dev`
 - `pnpm --filter @workspace/badminton-bazaar run typecheck` — typecheck the storefront
+- `pnpm --filter @workspace/api-server run typecheck` — typecheck the API
 - `pnpm run typecheck` — full workspace typecheck
 
 ## Accounts
@@ -17,7 +19,8 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - React + Vite, Tailwind CSS, lucide-react
-- Browser-local state (localStorage) — no backend, no DB, no Shopify
+- Browser-local state (localStorage) for catalog/preferences, plus an Express/PostgreSQL order service for shared account history
+- No Shopify or other hosted commerce platform
 
 ## Where things live
 
@@ -41,6 +44,7 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 - Sign in / Register modal with password show/hide toggle
 - Account page: change email, change password
 - Auth gate before checkout
+- Order history is loaded by account email from the shared database, so it is available on mobile and PC
 
 ### Admin Panel
 - **Products tab:** list, add, edit, delete; change price and compare-at price; badge label
@@ -52,33 +56,24 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 
 ## Email notifications (EmailJS)
 
-When a customer submits payment proof at checkout, an invoice email is automatically sent to the founder's email address. This uses [EmailJS](https://www.emailjs.com/) — a free, browser-side email service (free tier: 200 emails/month).
+When a customer submits payment proof at checkout, an invoice email is automatically sent to the founder's email address through formsubmit.co. Customer status updates are CC'd to the customer.
 
-### Setup (one-time)
-1. Create a free account at [emailjs.com](https://www.emailjs.com/)
-2. Add an **Email Service** (connect your Gmail, Outlook, or any SMTP account)
-3. Create an **Email Template** — use these variables:
-   - `{{to_email}}` — recipient (set "To Email" field to this)
-   - `{{order_id}}`, `{{order_date}}`
-   - `{{customer_name}}`, `{{customer_email}}`, `{{customer_phone}}`
-   - `{{customer_address}}`, `{{additional_contact}}`
-   - `{{payment_reference}}`, `{{order_total}}`
-   - `{{items_list}}` — line items as plain text
-   - `{{payment_proof}}` — embed as `<img src="{{payment_proof}}" />` for the screenshot
-4. In the Replit **Secrets** panel, set these three secrets:
-   - `VITE_EMAILJS_SERVICE_ID` — your EmailJS Service ID (e.g. `service_xxxxxxx`)
-   - `VITE_EMAILJS_TEMPLATE_ID` — your Template ID (e.g. `template_xxxxxxx`)
-   - `VITE_EMAILJS_PUBLIC_KEY` — your Public Key (Account → General)
-5. Restart the **Badminton Bazaar** workflow after adding the secrets
-
-If the secrets are not set, checkout still works — the email is silently skipped and a warning is logged to the browser console.
+Set `VITE_FOUNDER_EMAIL` in Replit Secrets and restart the Badminton Bazaar workflow after changing it. If it is not set, checkout still saves the shared order and logs a warning while skipping the notification.
 
 ### Files
-- `artifacts/badminton-bazaar/src/lib/email.ts` — EmailJS send function and template variable mapping
+- `artifacts/badminton-bazaar/src/lib/email.ts` — founder notification and customer status email mapping
+
+## Shared orders
+
+- Orders are stored in the `bb_orders` PostgreSQL table through `artifacts/api-server`.
+- `GET /api/orders` returns the admin order list; `GET /api/orders?email=...` returns an account's order history.
+- `POST /api/orders` creates an order and is idempotent by order ID, which imports existing browser-local orders once.
+- `PATCH /api/orders/:id` stores admin approval/rejection status and review messages.
+- The storefront refreshes shared orders every 15 seconds while signed in.
 
 ## Architecture decisions
 
-- Fully browser-local so the complete shopping/admin interaction works without provisioning services
+- Browser-local catalog/preferences keep the storefront lightweight; orders use PostgreSQL so admin and customer histories stay synchronized across devices
 - Racket imagery uses official Yonex and Li-Ning product image hosts where mapped; placeholders remain only as broken-image fallbacks
 - Checkout stays blocked until a real payment provider is connected; it never claims a local/demo order was paid
 
