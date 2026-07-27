@@ -395,7 +395,7 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
   const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
-  const [orders, setOrders] = useState<Order[]>(() => storage.get("bb-orders-v1", []));
+  const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -410,14 +410,6 @@ function App() {
   useEffect(() => storage.set("bb-founder-email", founderEmail), [founderEmail]);
   useEffect(() => {
     document.title = "Badminton Bazaar — Play More. Win More.";
-    let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (!favicon) {
-      favicon = document.createElement("link");
-      favicon.rel = "icon";
-      document.head.appendChild(favicon);
-    }
-    favicon.type = "image/png";
-    favicon.href = logoImg;
   }, []);
 
   useEffect(() => {
@@ -432,6 +424,7 @@ function App() {
         const localOrders = storage.get<Order[]>("bb-orders-v1", []);
         if (localOrders.length > 0) {
           await Promise.all(localOrders.map((order) => createSharedOrder(order)));
+          storage.set("bb-orders-v1", []); // clear after successful upload so they don't re-upload on every login
         }
         const sharedOrders = await listOrders(currentUser.admin ? undefined : { email: currentUser.email });
         if (!cancelled) {
