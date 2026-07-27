@@ -1,7 +1,6 @@
 {
   "version": 2,
   "buildCommand": "node ./build.mjs",
-  "outputDirectory": ".",
   "functions": {
     "api/index.js": {
       "maxDuration": 30
