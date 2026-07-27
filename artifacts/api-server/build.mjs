@@ -133,7 +133,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   // worker threads / pretty-printing transports are not needed.
   await esbuild({
     ...sharedOptions,
-    entryPoints: [path.resolve(artifactDir, "api/index.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/vercel.ts")],
     outdir: path.resolve(distDir, "vercel"),
     plugins: [],
   });
