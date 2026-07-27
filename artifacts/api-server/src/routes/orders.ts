@@ -38,26 +38,37 @@ router.get("/orders", async (req, res): Promise<void> => {
 });
 
 router.post("/orders", async (req, res): Promise<void> => {
-  const parsed = CreateOrderBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+  try {
+    const parsed = CreateOrderBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+
+    const existing = await db.select().from(ordersTable)
+      .where(eq(ordersTable.id, parsed.data.id));
+    if (existing[0]) {
+      res.status(200).json(toApiOrder(existing[0]));
+      return;
+    }
+
+    const [created] = await db.insert(ordersTable).values({
+      ...parsed.data,
+      total: String(parsed.data.total),
+      createdAt: new Date(parsed.data.createdAt),
+    }).returning();
+
+    res.status(201).json(toApiOrder(created));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code    = (err as Record<string, unknown>)?.code;
+    res.status(500).json({
+      error: message,
+      code,
+      DATABASE_URL_SET: !!process.env.DATABASE_URL,
+      NODE_ENV: process.env.NODE_ENV,
+    });
   }
-
-  const existing = await db.select().from(ordersTable)
-    .where(eq(ordersTable.id, parsed.data.id));
-  if (existing[0]) {
-    res.status(200).json(toApiOrder(existing[0]));
-    return;
-  }
-
-  const [created] = await db.insert(ordersTable).values({
-    ...parsed.data,
-    total: String(parsed.data.total),
-    createdAt: new Date(parsed.data.createdAt),
-  }).returning();
-
-  res.status(201).json(toApiOrder(created));
 });
 
 router.patch("/orders/:id", async (req, res): Promise<void> => {
