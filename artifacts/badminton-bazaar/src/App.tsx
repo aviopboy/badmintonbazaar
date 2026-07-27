@@ -9,7 +9,7 @@ import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
 import { sendOrderEmail, sendStatusEmail } from "./lib/email";
-import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder } from "@workspace/api-client-react";
+import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder, listUsers as listApiUsers, createUser as createApiUser, patchUser as patchApiUser, deleteUser as deleteApiUser } from "@workspace/api-client-react";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -445,6 +445,32 @@ function App() {
     };
   }, [currentUser]);
 
+  // ── Admin: sync user list from shared DB ──────────────────────
+  useEffect(() => {
+    if (!currentUser?.admin) return;
+    let cancelled = false;
+    const syncUsers = async () => {
+      try {
+        const apiUsers = await listApiUsers();
+        if (!cancelled) {
+          setUsers((prev) => {
+            // Merge: keep the seed admin always, add/update everything from API
+            const byId = new Map(prev.map((u) => [u.id, u]));
+            apiUsers.forEach((u) => byId.set(u.id, u as User));
+            // Always keep the local admin account in case it isn't in the DB yet
+            if (!byId.has("u-admin")) byId.set("u-admin", seedUsers[0]);
+            return [...byId.values()].sort((a, b) => (a.admin === b.admin ? 0 : a.admin ? -1 : 1));
+          });
+        }
+      } catch {
+        // fail silently — local users remain visible
+      }
+    };
+    void syncUsers();
+    const t = window.setInterval(() => { void syncUsers(); }, 30_000);
+    return () => { cancelled = true; window.clearInterval(t); };
+  }, [currentUser?.admin]);
+
   const toast = (message: string, error = false) => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, error }]);
@@ -487,6 +513,8 @@ function App() {
       const user: User = { id: `u-${Date.now()}`, name: name.trim(), email: email.trim().toLowerCase(), password, admin: false, joined: new Date().toLocaleDateString("en-IN") };
       setUsers((prev) => [...prev, user]); setCurrentUser(user); setModal(null); setAuthError("");
       toast(`Welcome, ${user.name.split(" ")[0]}!`);
+      // Sync new registration to shared DB so admin can see all users across devices
+      createApiUser(user).catch(() => {});
     }
   };
 
@@ -1335,6 +1363,7 @@ function AddUserModal({ close, users, setUsers, toast }: {
     if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) { toast("Email already in use.", true); return; }
     const user: User = { id: `u-${Date.now()}`, name: name.trim(), email: email.trim().toLowerCase(), password, admin: isAdmin, joined: new Date().toLocaleDateString("en-IN") };
     setUsers([...users, user]);
+    createApiUser(user).catch(() => {});
     toast(`User "${user.name}" added.`);
     close();
   };
@@ -1774,8 +1803,8 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
                         <div className="action-btns">
                           {u.id !== "u-admin" && (
                             <>
-                              <button className="btn-table-action" onClick={() => { setUsers(users.map((x) => x.id === u.id ? { ...x, admin: !x.admin } : x)); toast(u.admin ? "Admin revoked." : "Admin granted."); }} data-testid={`button-toggle-admin-${u.id}`} title={u.admin ? "Revoke admin" : "Make admin"}><ShieldCheck size={14} /></button>
-                              <button className="btn-table-action danger" onClick={() => { if (window.confirm(`Delete "${u.name}"?`)) { setUsers(users.filter((x) => x.id !== u.id)); toast("User removed."); } }} data-testid={`button-delete-user-${u.id}`} title="Delete"><Trash2 size={14} /></button>
+                              <button className="btn-table-action" onClick={() => { setUsers(users.map((x) => x.id === u.id ? { ...x, admin: !x.admin } : x)); toast(u.admin ? "Admin revoked." : "Admin granted."); patchApiUser(u.id, { admin: !u.admin }).catch(() => {}); }} data-testid={`button-toggle-admin-${u.id}`} title={u.admin ? "Revoke admin" : "Make admin"}><ShieldCheck size={14} /></button>
+                              <button className="btn-table-action danger" onClick={() => { if (window.confirm(`Delete "${u.name}"?`)) { setUsers(users.filter((x) => x.id !== u.id)); toast("User removed."); deleteApiUser(u.id).catch(() => {}); } }} data-testid={`button-delete-user-${u.id}`} title="Delete"><Trash2 size={14} /></button>
                             </>
                           )}
                         </div>
