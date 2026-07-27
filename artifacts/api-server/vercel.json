@@ -1,12 +1,12 @@
 {
   "version": 2,
-  "buildCommand": "",
+  "buildCommand": "node ./build.mjs",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index.ts" }
+    { "source": "/(.*)", "destination": "/api/index.js" }
   ]
 }
