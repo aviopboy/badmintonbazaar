@@ -8,6 +8,7 @@ import {
 import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
+import { sendOrderEmail } from "./lib/email";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -990,6 +991,8 @@ function CheckoutModal({
   const [proofName, setProofName] = useState("");
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+  const [emailSent, setEmailSent] = useState<boolean | null>(null);
 
   const readProof = (file: File) => {
     if (!file.type.startsWith("image/")) { setError("Please upload an image of your payment proof."); return; }
@@ -1006,9 +1009,11 @@ function CheckoutModal({
     setStep("payment"); setError("");
   };
 
-  const submitPayment = () => {
+  const submitPayment = async () => {
     if (!paymentReference.trim()) { setError("Enter the UPI transaction/reference number."); return; }
     if (!paymentProof) { setError("Upload a screenshot or image of your payment proof."); return; }
+    setSending(true);
+    setError("");
     const order = submitOrder({
       customerName: name.trim(),
       email: email.trim().toLowerCase(),
@@ -1018,9 +1023,30 @@ function CheckoutModal({
       paymentReference: paymentReference.trim(),
       paymentProof,
     });
+    let sent = false;
+    try {
+      await sendOrderEmail({
+        founderEmail,
+        orderId: order.id,
+        customerName: order.customerName,
+        customerEmail: order.email,
+        customerPhone: order.phone,
+        customerAddress: order.address,
+        additionalContact: order.additionalContact,
+        paymentReference: order.paymentReference,
+        paymentProof: order.paymentProof,
+        items: order.items,
+        total: order.total,
+        createdAt: order.createdAt,
+      });
+      sent = true;
+    } catch (err) {
+      console.error("[Badminton Bazaar] Email notification failed:", err);
+    }
+    setSending(false);
+    setEmailSent(sent);
     setCreatedOrder(order);
     setStep("success");
-    setError("");
   };
 
   if (step === "success" && createdOrder) {
@@ -1037,7 +1063,21 @@ function CheckoutModal({
             <div className="pending-order-note">
               <strong>Founder review</strong>
               <span>{founderEmail}</span>
-              <small>If the payment is not received or cannot be recognized, the founder will contact you at {createdOrder.phone} or {createdOrder.email}.</small>
+              {emailSent === true && (
+                <small style={{ color: "#4ade80" }}>
+                  ✓ Invoice and payment proof have been emailed to the founder.
+                </small>
+              )}
+              {emailSent === false && (
+                <small>
+                  The founder has been notified via the admin panel. If payment is not received or cannot be recognised, they will contact you at {createdOrder.phone} or {createdOrder.email}.
+                </small>
+              )}
+              {emailSent === null && (
+                <small>
+                  If the payment is not received or cannot be recognised, the founder will contact you at {createdOrder.phone} or {createdOrder.email}.
+                </small>
+              )}
             </div>
             <button className="btn-primary btn-full" onClick={close} data-testid="button-close-checkout-success">
               Back to Store
@@ -1074,8 +1114,15 @@ function CheckoutModal({
               </div>
               {paymentProof && <img className="proof-preview" src={paymentProof} alt="Payment proof preview" />}
               {error && <div className="form-error">{error}</div>}
-              <button className="btn-primary btn-full" onClick={submitPayment} data-testid="button-submit-payment-proof">
-                <Upload size={16} /> Submit Payment Proof & Create Invoice
+              <button
+                className="btn-primary btn-full"
+                onClick={submitPayment}
+                disabled={sending}
+                data-testid="button-submit-payment-proof"
+              >
+                {sending
+                  ? <><Loader2 size={16} className="spin" /> Sending invoice…</>
+                  : <><Upload size={16} /> Submit Payment Proof & Create Invoice</>}
               </button>
               <button className="btn-ghost btn-full" onClick={() => setStep("details")}>← Back to Delivery Details</button>
             </div>

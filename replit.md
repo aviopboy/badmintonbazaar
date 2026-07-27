@@ -1,6 +1,6 @@
 # Badminton Bazaar
 
-A dark, sporty badminton gear storefront inspired by racketrush.in — with catalog, accounts, cart, and a full admin panel. All data is browser-local (localStorage); no external commerce services or API keys needed.
+A dark, sporty badminton gear storefront inspired by racketrush.in — with catalog, accounts, cart, and a full admin panel. All data is browser-local (localStorage). Email notifications are sent via EmailJS when a customer submits payment proof at checkout.
 
 ## Run & Operate
 
@@ -49,6 +49,32 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 - **Image picker in product editor:** verified official-brand racket images appear for mapped products; other products accept a real manufacturer or retailer image URL
 - **Optional showcase media:** admins can add a YouTube video or second product image URL to any product
 - **Category slots:** Rackets, Shoes, Shuttlecocks, Strings, Grips, Kit Bags, Apparel, Socks, Accessories, Wristbands, Injury Support, Training & Fitness, Court Equipment, Stringing Tools, Recovery & Nutrition
+
+## Email notifications (EmailJS)
+
+When a customer submits payment proof at checkout, an invoice email is automatically sent to the founder's email address. This uses [EmailJS](https://www.emailjs.com/) — a free, browser-side email service (free tier: 200 emails/month).
+
+### Setup (one-time)
+1. Create a free account at [emailjs.com](https://www.emailjs.com/)
+2. Add an **Email Service** (connect your Gmail, Outlook, or any SMTP account)
+3. Create an **Email Template** — use these variables:
+   - `{{to_email}}` — recipient (set "To Email" field to this)
+   - `{{order_id}}`, `{{order_date}}`
+   - `{{customer_name}}`, `{{customer_email}}`, `{{customer_phone}}`
+   - `{{customer_address}}`, `{{additional_contact}}`
+   - `{{payment_reference}}`, `{{order_total}}`
+   - `{{items_list}}` — line items as plain text
+   - `{{payment_proof}}` — embed as `<img src="{{payment_proof}}" />` for the screenshot
+4. In the Replit **Secrets** panel, set these three secrets:
+   - `VITE_EMAILJS_SERVICE_ID` — your EmailJS Service ID (e.g. `service_xxxxxxx`)
+   - `VITE_EMAILJS_TEMPLATE_ID` — your Template ID (e.g. `template_xxxxxxx`)
+   - `VITE_EMAILJS_PUBLIC_KEY` — your Public Key (Account → General)
+5. Restart the **Badminton Bazaar** workflow after adding the secrets
+
+If the secrets are not set, checkout still works — the email is silently skipped and a warning is logged to the browser console.
+
+### Files
+- `artifacts/badminton-bazaar/src/lib/email.ts` — EmailJS send function and template variable mapping
 
 ## Architecture decisions
 
