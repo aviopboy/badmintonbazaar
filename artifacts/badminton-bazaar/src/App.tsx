@@ -3,7 +3,7 @@ import {
   ArrowRight, BadgeCheck, Check, ChevronDown, CreditCard, Edit3, Heart,
   LayoutDashboard, Loader2, Minus, Package, Play, Plus, Search,
   ShieldCheck, ShoppingBag, Sparkles, Trash2, Truck, Upload, UserPlus, UserRound,
-  X, Eye, EyeOff, RefreshCw, Video,
+  X, Eye, EyeOff, RefreshCw, Video, Phone, Mail, Download, FileImage,
 } from "lucide-react";
 import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
@@ -24,6 +24,23 @@ type Product = {
 };
 type CartLine = { productId: string; quantity: number };
 type User = { id: string; name: string; email: string; password: string; admin: boolean; joined: string };
+type OrderStatus = "pending" | "approved" | "rejected";
+type Order = {
+  id: string;
+  userId: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  address: string;
+  additionalContact: string;
+  paymentReference: string;
+  paymentProof: string;
+  status: OrderStatus;
+  reviewMessage: string;
+  createdAt: string;
+  items: { name: string; brand: string; price: number; quantity: number }[];
+  total: number;
+};
 type Toast = { id: number; message: string; error?: boolean };
 type View = "store" | "account" | "admin";
 type Modal = "auth" | "product" | "cart" | "checkout" | "add-user" | null;
@@ -375,6 +392,8 @@ function App() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authError, setAuthError] = useState("");
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
+  const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
+  const [orders, setOrders] = useState<Order[]>(() => storage.get("bb-orders-v1", []));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const clearCart = () => setCart([]);
@@ -385,6 +404,8 @@ function App() {
   useEffect(() => storage.set("bb-cart", cart), [cart]);
   useEffect(() => storage.set("bb-wishlist", wishlist), [wishlist]);
   useEffect(() => storage.set("bb-hero-bg", heroBackground), [heroBackground]);
+  useEffect(() => storage.set("bb-founder-email", founderEmail), [founderEmail]);
+  useEffect(() => storage.set("bb-orders-v1", orders), [orders]);
 
   const toast = (message: string, error = false) => {
     const id = Date.now() + Math.random();
@@ -449,6 +470,31 @@ function App() {
     }
   };
 
+  const submitOrder = (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => {
+    const items = cart.flatMap((line) => {
+      const product = products.find((p) => p.id === line.productId);
+      return product ? [{ name: product.name, brand: product.brand, price: product.price, quantity: line.quantity }] : [];
+    });
+    const order: Order = {
+      ...details,
+      id: `BB-${Date.now().toString(36).toUpperCase()}`,
+      userId: currentUser?.id ?? "",
+      status: "pending",
+      reviewMessage: "",
+      createdAt: new Date().toISOString(),
+      items,
+      total: cartTotal,
+    };
+    setOrders((prev) => [order, ...prev]);
+    clearCart();
+    toast(`Payment proof saved. Invoice ${order.id} is pending review.`);
+    return order;
+  };
+
+  const updateOrder = (id: string, status: OrderStatus, reviewMessage: string) => {
+    setOrders((prev) => prev.map((order) => order.id === id ? { ...order, status, reviewMessage } : order));
+  };
+
   return (
     <div className="app-shell">
       <TopNav currentUser={currentUser} cartCount={cartCount} query={query}
@@ -464,7 +510,7 @@ function App() {
           toggleWishlist={toggleWishlist} heroBackground={heroBackground} />
       )}
       {view === "account" && currentUser && (
-        <Account user={currentUser} updateUser={updateUser} signOut={signOut} toast={toast} />
+        <Account user={currentUser} orders={orders.filter((order) => order.userId === currentUser.id)} updateUser={updateUser} signOut={signOut} toast={toast} />
       )}
       {view === "account" && !currentUser && (
         <div className="gate-screen">
@@ -480,6 +526,8 @@ function App() {
       {view === "admin" && currentUser?.admin && (
         <Admin products={products} users={users} setUsers={setUsers}
           heroBackground={heroBackground} setHeroBackground={setHeroBackground}
+          founderEmail={founderEmail} setFounderEmail={setFounderEmail}
+          orders={orders} updateOrder={updateOrder}
           toast={toast} modal={modal} setModal={setModal}
           editingProduct={editingProduct} setEditingProduct={setEditingProduct}
           saveProduct={saveProduct} deleteProduct={deleteProduct} />
@@ -506,7 +554,17 @@ function App() {
         <AuthModal mode={authMode} setMode={(m) => { setAuthMode(m); setAuthError(""); }} close={() => setModal(null)} submit={onAuth} error={authError} />
       )}
       {modal === "checkout" && (
-        <CheckoutModal close={() => setModal(null)} total={cartTotal} clearCart={clearCart} />
+        <CheckoutModal
+          close={() => setModal(null)}
+          total={cartTotal}
+          user={currentUser}
+          items={cart.flatMap((line) => {
+            const product = products.find((p) => p.id === line.productId);
+            return product ? [{ name: product.name, quantity: line.quantity, price: product.price }] : [];
+          })}
+          founderEmail={founderEmail}
+          submitOrder={submitOrder}
+        />
       )}
       {modal === "add-user" && currentUser?.admin && (
         <AddUserModal close={() => setModal(null)} users={users} setUsers={setUsers} toast={toast} />
@@ -910,26 +968,78 @@ function AuthModal({ mode, setMode, close, submit, error }: {
   );
 }
 
-/* ─── Checkout Modal — 3-step UPI flow ───────────────────────── */
-function CheckoutModal({ close, total, clearCart }: { close: () => void; total: number; clearCart: () => void }) {
-  const [step, setStep] = useState<"summary" | "payment" | "success">("summary");
-  const deliveryDays = "5–7 business days";
+/* ─── Checkout Modal — UPI payment proof flow ────────────────── */
+function CheckoutModal({
+  close, total, user, items, founderEmail, submitOrder,
+}: {
+  close: () => void;
+  total: number;
+  user: User | null;
+  items: { name: string; quantity: number; price: number }[];
+  founderEmail: string;
+  submitOrder: (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => Order;
+}) {
+  const [step, setStep] = useState<"details" | "payment" | "success">("details");
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [additionalContact, setAdditionalContact] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentProof, setPaymentProof] = useState("");
+  const [proofName, setProofName] = useState("");
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [error, setError] = useState("");
 
-  if (step === "success") {
+  const readProof = (file: File) => {
+    if (!file.type.startsWith("image/")) { setError("Please upload an image of your payment proof."); return; }
+    if (file.size > 4 * 1024 * 1024) { setError("Payment proof must be 4 MB or smaller."); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setPaymentProof(String(reader.result)); setProofName(file.name); setError(""); };
+    reader.readAsDataURL(file);
+  };
+
+  const createPendingOrder = () => {
+    if (!name.trim() || !email.includes("@") || !phone.trim() || !address.trim()) {
+      setError("Please complete your name, email, phone number, and delivery address."); return;
+    }
+    setStep("payment"); setError("");
+  };
+
+  const submitPayment = () => {
+    if (!paymentReference.trim()) { setError("Enter the UPI transaction/reference number."); return; }
+    if (!paymentProof) { setError("Upload a screenshot or image of your payment proof."); return; }
+    const order = submitOrder({
+      customerName: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      address: address.trim(),
+      additionalContact: additionalContact.trim(),
+      paymentReference: paymentReference.trim(),
+      paymentProof,
+    });
+    setCreatedOrder(order);
+    setStep("success");
+    setError("");
+  };
+
+  if (step === "success" && createdOrder) {
     return (
       <div className="modal-backdrop">
         <section className="modal" role="dialog" data-testid="modal-checkout">
           <div className="success-body">
             <div className="success-icon"><Check size={30} /></div>
-            <h2>Order Confirmed!</h2>
+            <h2>Payment Submitted</h2>
             <p style={{ fontSize: 15, color: "rgb(var(--paper-bright))", fontWeight: 600 }}>
-              Thank you for your purchase.
+              Invoice {createdOrder.id} is pending payment review.
             </p>
-            <p>Your product will arrive in <strong>{deliveryDays}</strong>.</p>
-            <p style={{ fontSize: 12 }}>
-              We'll notify you once your order is dispatched. If you have any questions, contact us via Instagram or WhatsApp.
-            </p>
-            <button className="btn-primary btn-full" onClick={() => { clearCart(); close(); }} data-testid="button-close-checkout-success">
+            <p>We saved your order details and payment proof. The founder will verify the payment before dispatch.</p>
+            <div className="pending-order-note">
+              <strong>Founder review</strong>
+              <span>{founderEmail}</span>
+              <small>If the payment is not received or cannot be recognized, the founder will contact you at {createdOrder.phone} or {createdOrder.email}.</small>
+            </div>
+            <button className="btn-primary btn-full" onClick={close} data-testid="button-close-checkout-success">
               Back to Store
             </button>
           </div>
@@ -945,21 +1055,29 @@ function CheckoutModal({ close, total, clearCart }: { close: () => void; total: 
           <button className="modal-close" onClick={close} data-testid="button-close-checkout"><X size={20} /></button>
           <div className="upi-payment-block">
             <p className="eyebrow" style={{ padding: "24px 28px 0", marginBottom: 4 }}>Step 2 of 2</p>
-            <h2 style={{ fontFamily: "var(--app-font-display)", fontSize: 32, textTransform: "uppercase", padding: "0 28px 16px" }}>Pay via UPI</h2>
-            <div className="upi-amount-bar">
-              <span>Total to pay</span>
-              <strong>{money(total)}</strong>
-            </div>
+            <h2 style={{ fontFamily: "var(--app-font-display)", fontSize: 32, textTransform: "uppercase", padding: "0 28px 16px" }}>Pay & Upload Proof</h2>
+            <div className="upi-amount-bar"><span>Total to pay</span><strong>{money(total)}</strong></div>
             <div className="upi-qr-wrap">
               <img src={qrImg} alt="UPI QR Code — Jignesh Makwana" className="upi-qr-img" />
               <p className="upi-id-line">UPI ID: <strong>jignesh32@ptaxis</strong></p>
-              <p className="upi-hint">Scan the QR with any UPI app — Paytm, PhonePe, Google Pay, BHIM</p>
+              <p className="upi-hint">Pay the exact amount, then upload your payment screenshot and enter the UPI reference number.</p>
             </div>
-            <div style={{ padding: "0 28px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
-              <button className="btn-primary btn-full" onClick={() => setStep("success")} data-testid="button-confirm-payment">
-                <Check size={16} /> I Have Paid — Confirm Order
+            <div className="checkout-form">
+              <div className="field">
+                <label htmlFor="payment-reference">UPI Transaction / Reference Number</label>
+                <input id="payment-reference" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="Enter the UTR or transaction ID" data-testid="input-payment-reference" />
+              </div>
+              <div className="field">
+                <label htmlFor="payment-proof">Payment Proof</label>
+                <label className="btn-upload-img" htmlFor="payment-proof"><FileImage size={16} /> {proofName || "Upload payment screenshot"}</label>
+                <input id="payment-proof" type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && readProof(e.target.files[0])} data-testid="input-payment-proof" />
+              </div>
+              {paymentProof && <img className="proof-preview" src={paymentProof} alt="Payment proof preview" />}
+              {error && <div className="form-error">{error}</div>}
+              <button className="btn-primary btn-full" onClick={submitPayment} data-testid="button-submit-payment-proof">
+                <Upload size={16} /> Submit Payment Proof & Create Invoice
               </button>
-              <button className="btn-ghost btn-full" onClick={() => setStep("summary")}>← Back to Summary</button>
+              <button className="btn-ghost btn-full" onClick={() => setStep("details")}>← Back to Delivery Details</button>
             </div>
           </div>
         </section>
@@ -967,25 +1085,25 @@ function CheckoutModal({ close, total, clearCart }: { close: () => void; total: 
     );
   }
 
-  // step === "summary"
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
       <section className="modal" role="dialog" data-testid="modal-checkout">
         <button className="modal-close" onClick={close} data-testid="button-close-checkout"><X size={20} /></button>
         <div className="checkout-block">
           <p className="eyebrow" style={{ marginBottom: 4 }}>Step 1 of 2</p>
-          <h2 style={{ fontFamily: "var(--app-font-display)", fontSize: 32, textTransform: "uppercase", marginBottom: 20 }}>Order Summary</h2>
-          <div className="checkout-total-row">
-            <span>Order Total</span>
-            <strong>{money(total)}</strong>
+          <h2 style={{ fontFamily: "var(--app-font-display)", fontSize: 32, textTransform: "uppercase", marginBottom: 8 }}>Delivery Details</h2>
+          <p className="checkout-message">These details will appear on your invoice and help the founder contact you about delivery.</p>
+          <div className="checkout-total-row"><span>Order Total</span><strong>{money(total)}</strong></div>
+          <div className="checkout-form">
+            <div className="field"><label htmlFor="checkout-name">Full Name</label><input id="checkout-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name for delivery" data-testid="input-checkout-name" /></div>
+            <div className="field"><label htmlFor="checkout-email">Customer Email</label><input id="checkout-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Where we can send updates" data-testid="input-checkout-email" /></div>
+            <div className="field"><label htmlFor="checkout-phone">Phone Number</label><input id="checkout-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Delivery contact number" data-testid="input-checkout-phone" /></div>
+            <div className="field"><label htmlFor="checkout-address">Full Delivery Address</label><textarea id="checkout-address" rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House, street, city, state, PIN code" data-testid="input-checkout-address" /></div>
+            <div className="field"><label htmlFor="checkout-additional">Additional Contact Information <span className="optional-label">(optional)</span></label><textarea id="checkout-additional" rows={2} value={additionalContact} onChange={(e) => setAdditionalContact(e.target.value)} placeholder="Alternate number, WhatsApp, delivery notes…" data-testid="input-checkout-additional" /></div>
+            {error && <div className="form-error">{error}</div>}
+            <button className="btn-primary btn-full" onClick={createPendingOrder} data-testid="button-proceed-to-payment"><CreditCard size={16} /> Continue to UPI Payment</button>
+            <button className="btn-ghost btn-full" style={{ marginTop: 10 }} onClick={close}>Cancel</button>
           </div>
-          <p className="checkout-message" style={{ marginBottom: 20 }}>
-            Review your total above. On the next step you'll see our UPI QR code to complete payment.
-          </p>
-          <button className="btn-primary btn-full" onClick={() => setStep("payment")} data-testid="button-proceed-to-payment">
-            <CreditCard size={16} /> Proceed to UPI Payment
-          </button>
-          <button className="btn-ghost btn-full" style={{ marginTop: 10 }} onClick={close}>Cancel</button>
         </div>
       </section>
     </div>
@@ -1037,7 +1155,7 @@ function AddUserModal({ close, users, setUsers, toast }: {
    ACCOUNT PAGE
 ══════════════════════════════════════════════════════════════════ */
 function Account({ user, updateUser, signOut, toast }: {
-  user: User; updateUser: (u: User) => void; signOut: () => void; toast: (msg: string, err?: boolean) => void;
+  user: User; orders: Order[]; updateUser: (u: User) => void; signOut: () => void; toast: (msg: string, err?: boolean) => void;
 }) {
   const [newEmail, setNewEmail] = useState(user.email);
   const [newPassword, setNewPassword] = useState("");
@@ -1076,7 +1194,13 @@ function Account({ user, updateUser, signOut, toast }: {
         <div className="account-cards">
           <section className="account-card">
             <h2><Package size={18} /> Order History</h2>
-            <p className="card-desc">No orders yet. Shop our catalog to get started.</p>
+            {orders.length === 0 ? <p className="card-desc">No orders yet. Shop our catalog to get started.</p> : (
+              <div className="order-list">
+                {orders.map((order) => (
+                  <InvoiceCard key={order.id} order={order} />
+                ))}
+              </div>
+            )}
           </section>
           <section className="account-card">
             <h2>Change Email</h2>
@@ -1105,18 +1229,118 @@ function Account({ user, updateUser, signOut, toast }: {
   );
 }
 
+function InvoiceCard({ order }: { order: Order }) {
+  const statusLabel = order.status === "approved" ? "Payment approved" : order.status === "rejected" ? "Payment not approved" : "Payment pending review";
+  const downloadInvoice = () => {
+    const lines = [
+      `BADMINTON BAZAAR — INVOICE ${order.id}`,
+      `Date: ${new Date(order.createdAt).toLocaleString("en-IN")}`,
+      "",
+      `Customer: ${order.customerName}`,
+      `Email: ${order.email}`,
+      `Phone: ${order.phone}`,
+      `Address: ${order.address}`,
+      order.additionalContact ? `Additional contact: ${order.additionalContact}` : "",
+      "",
+      ...order.items.map((item) => `${item.name} (${item.brand}) × ${item.quantity} — ${money(item.price * item.quantity)}`),
+      "",
+      `Total: ${money(order.total)}`,
+      `Payment reference: ${order.paymentReference}`,
+      `Status: ${statusLabel}`,
+      order.reviewMessage ? `Review message: ${order.reviewMessage}` : "",
+    ].filter(Boolean).join("\n");
+    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = `${order.id}-invoice.txt`; link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <article className="order-card" data-testid={`order-card-${order.id}`}>
+      <div className="order-card-head">
+        <div><strong>{order.id}</strong><span>{new Date(order.createdAt).toLocaleDateString("en-IN")}</span></div>
+        <span className={`status-pill ${order.status}`}>{statusLabel}</span>
+      </div>
+      <div className="order-card-items">
+        {order.items.map((item) => <span key={`${order.id}-${item.name}`}>{item.name} × {item.quantity}</span>)}
+      </div>
+      <div className="order-card-foot"><strong>{money(order.total)}</strong><button className="btn-ghost btn-small" onClick={downloadInvoice}><Download size={14} /> Download Invoice</button></div>
+      {order.reviewMessage && <p className="review-message">{order.reviewMessage}</p>}
+    </article>
+  );
+}
+
+function OrderReviewCard({ order, updateOrder, toast }: {
+  order: Order;
+  updateOrder: (id: string, status: OrderStatus, message: string) => void;
+  toast: (msg: string, err?: boolean) => void;
+}) {
+  const [message, setMessage] = useState(order.reviewMessage);
+  const isPending = order.status === "pending";
+  const review = (status: OrderStatus) => {
+    const nextMessage = status === "approved"
+      ? "Payment approved. Your order is being prepared for dispatch."
+      : message.trim() || "We could not verify this payment. Please contact us so we can help complete your order.";
+    updateOrder(order.id, status, nextMessage);
+    toast(status === "approved" ? `${order.id} approved.` : `${order.id} marked for customer follow-up.`);
+  };
+  return (
+    <article className={`order-review-card ${order.status}`} data-testid={`order-review-${order.id}`}>
+      <div className="order-review-head">
+        <div>
+          <strong>{order.id}</strong>
+          <span>{new Date(order.createdAt).toLocaleString("en-IN")}</span>
+        </div>
+        <span className={`status-pill ${order.status}`}>{order.status === "pending" ? "Needs review" : order.status}</span>
+      </div>
+      <div className="order-review-grid">
+        <div className="order-review-details">
+          <h3>{order.customerName}</h3>
+          <p><Mail size={14} /> {order.email}</p>
+          <p><Phone size={14} /> {order.phone}</p>
+          <p className="address-line"><strong>Deliver to:</strong> {order.address}</p>
+          {order.additionalContact && <p className="address-line"><strong>Additional:</strong> {order.additionalContact}</p>}
+          <div className="review-items">{order.items.map((item) => <span key={`${order.id}-${item.name}`}>{item.name} × {item.quantity} — {money(item.price * item.quantity)}</span>)}</div>
+          <div className="review-total"><span>Total</span><strong>{money(order.total)}</strong></div>
+          <p className="payment-reference"><strong>UPI reference:</strong> {order.paymentReference}</p>
+        </div>
+        <div className="proof-panel">
+          <span className="proof-label">Uploaded payment proof</span>
+          <a href={order.paymentProof} target="_blank" rel="noreferrer"><img src={order.paymentProof} alt={`Payment proof for ${order.id}`} /></a>
+          <a className="btn-ghost btn-small" href={order.paymentProof} download={`${order.id}-payment-proof`}><Download size={14} /> Download proof</a>
+        </div>
+      </div>
+      {isPending ? (
+        <div className="review-actions">
+          <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Optional message for the customer if payment is not recognized…" aria-label={`Review message for ${order.id}`} />
+          <div className="review-buttons">
+            <a className="btn-ghost btn-small" href={`tel:${order.phone}`}><Phone size={14} /> Call customer</a>
+            <a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Email customer</a>
+            <button className="btn-danger btn-small" onClick={() => review("rejected")} data-testid={`button-reject-${order.id}`}>Reject / Follow up</button>
+            <button className="btn-primary btn-small" onClick={() => review("approved")} data-testid={`button-approve-${order.id}`}><Check size={14} /> Approve payment</button>
+          </div>
+        </div>
+      ) : (
+        <div className="review-complete"><span>{order.reviewMessage}</span><a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Contact customer</a></div>
+      )}
+    </article>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════
    ADMIN PANEL
 ══════════════════════════════════════════════════════════════════ */
-function Admin({ products, users, setUsers, heroBackground, setHeroBackground, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct }: {
+function Admin({ products, users, setUsers, heroBackground, setHeroBackground, founderEmail, setFounderEmail, orders, updateOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct }: {
   products: Product[]; users: User[]; setUsers: (v: User[]) => void;
   heroBackground: string; setHeroBackground: (v: string) => void;
+  founderEmail: string; setFounderEmail: (v: string) => void; orders: Order[]; updateOrder: (id: string, status: OrderStatus, message: string) => void;
   toast: (msg: string, err?: boolean) => void; modal: Modal; setModal: (v: Modal) => void;
   editingProduct: Product | null; setEditingProduct: (p: Product | null) => void;
   saveProduct: (p: Product) => void; deleteProduct: (id: string) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "users" | "settings">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "users" | "settings">("orders");
   const [bgUrl, setBgUrl] = useState(heroBackground);
+  const [founderEmailDraft, setFounderEmailDraft] = useState(founderEmail);
   // Non-admin users only (admin accounts hidden from public display)
   const allDisplayUsers = users; // admin sees all
 
@@ -1130,18 +1354,29 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, t
           </button>
         </div>
         <div className="stats-row">
+          <div className="stat-card"><span>Pending Payments</span><strong data-testid="stat-pending-order-count">{orders.filter((o) => o.status === "pending").length}</strong></div>
           <div className="stat-card"><span>Products</span><strong data-testid="stat-product-count">{products.length}</strong></div>
           <div className="stat-card"><span>Registered Users</span><strong data-testid="stat-user-count">{users.filter((u) => !u.admin).length}</strong></div>
-          <div className="stat-card"><span>Admin Accounts</span><strong data-testid="stat-admin-count">{users.filter((u) => u.admin).length}</strong></div>
         </div>
 
         <div className="admin-tabs">
-          {(["products", "users", "settings"] as const).map((tab) => (
+          {(["orders", "products", "users", "settings"] as const).map((tab) => (
             <button key={tab} className={`admin-tab ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
+
+        {activeTab === "orders" && (
+          <div className="admin-panel">
+            <div className="panel-header"><div><h2>Payment Review</h2><p className="panel-subtitle">Review the uploaded proof before contacting the customer or approving dispatch.</p></div><span className="panel-count">{orders.length} invoices</span></div>
+            {orders.length === 0 ? <div className="empty-state admin-empty"><Package size={28} /><strong>No payment proofs yet</strong><span>New checkout submissions will appear here.</span></div> : (
+              <div className="order-review-list">
+                {orders.map((order) => <OrderReviewCard key={order.id} order={order} updateOrder={updateOrder} toast={toast} />)}
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === "products" && (
           <div className="admin-panel">
@@ -1209,6 +1444,12 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, t
         {activeTab === "settings" && (
           <div className="admin-panel">
             <div className="panel-header"><h2>Store Settings</h2></div>
+            <div className="settings-section">
+              <h3>Founder Contact Email</h3>
+              <p className="settings-desc">This is the email address shown to customers as the payment review contact. Email sending is not connected on the free plan, so use the contact buttons in Payment Review.</p>
+              <div className="field"><label htmlFor="founder-email">Founder Email</label><input id="founder-email" type="email" value={founderEmailDraft} onChange={(e) => setFounderEmailDraft(e.target.value)} placeholder="founder@example.com" data-testid="input-founder-email" /></div>
+              <div className="settings-actions"><button className="btn-primary" onClick={() => { if (!founderEmailDraft.includes("@")) { toast("Enter a valid founder email.", true); return; } setFounderEmail(founderEmailDraft.trim().toLowerCase()); toast("Founder email updated."); }}>Save Founder Email</button></div>
+            </div>
             <div className="settings-section">
               <h3>Hero Background Image</h3>
               <p className="settings-desc">Set a custom background image URL for the hero banner. Leave blank to use the default dark gradient.</p>
