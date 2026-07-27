@@ -610,8 +610,14 @@ function App() {
   };
 
   const updateOrder = async (id: string, status: OrderStatus, reviewMessage: string) => {
-    const updated = await updateSharedOrder(id, { status, reviewMessage });
-    setOrders((prev) => prev.map((order) => order.id === id ? updated : order));
+    try {
+      const updated = await updateSharedOrder(id, { status, reviewMessage });
+      setOrders((prev) => prev.map((order) => order.id === id ? updated : order));
+      return updated;
+    } catch (err) {
+      console.error("[Badminton Bazaar] updateOrder failed:", err);
+      throw err;
+    }
   };
 
   const deleteOrder = async (id: string) => {
