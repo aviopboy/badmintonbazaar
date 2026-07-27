@@ -1,12 +1,8 @@
-import { Router } from "express";
-import healthRouter from "./health.js";
-import ordersRouter from "./orders.js";
-import usersRouter from "./users.js";
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
 
-const router = Router();
+const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use(ordersRouter);
-router.use(usersRouter);
 
 export default router;

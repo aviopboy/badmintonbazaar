@@ -14,11 +14,12 @@ async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
 
-  // Shared esbuild options used by both the local server and the Vercel bundle.
-  const sharedOptions = {
+  await esbuild({
+    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
+    outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
@@ -116,26 +117,6 @@ globalThis.__filename = __bannerUrl.fileURLToPath(import.meta.url);
 globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
-  };
-
-  // Build 1: local dev/production server entry (starts the HTTP listener)
-  await esbuild({
-    ...sharedOptions,
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
-    outdir: distDir,
-  });
-
-  // Build 2: Vercel serverless entry — exports the Express app without starting a listener.
-  // api/index.js re-exports from this file so Vercel uses plain JS and skips its own
-  // TypeScript compilation of the monorepo source.
-  // Uses a separate outdir to avoid collision with the pino worker files from build 1.
-  // The pino plugin is omitted: Vercel Lambda functions are single-process, so pino
-  // worker threads / pretty-printing transports are not needed.
-  await esbuild({
-    ...sharedOptions,
-    entryPoints: [path.resolve(artifactDir, "src/vercel.ts")],
-    outdir: path.resolve(distDir, "vercel"),
-    plugins: [],
   });
 }
 
