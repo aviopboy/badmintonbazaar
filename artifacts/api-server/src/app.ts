@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -30,5 +30,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
+
+// JSON error handler — returns the real error message instead of Express's
+// default HTML 500 page, making it visible in curl / browser network tab.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  const message = err instanceof Error ? err.message : String(err);
+  const stack   = err instanceof Error ? err.stack   : undefined;
+  logger.error({ err }, "Unhandled error");
+  res.status(500).json({ error: message, stack });
+});
 
 export default app;
