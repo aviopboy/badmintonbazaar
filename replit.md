@@ -81,6 +81,7 @@ Set `VITE_FOUNDER_EMAIL` in Replit Secrets and restart the Badminton Bazaar work
 
 - Keep the brand name **Badminton Bazaar** and logo letter **B**
 - Do not use Shopify or any other hosted commerce platform
+- Push to GitHub after every fix
 
 ## Gotchas
 
