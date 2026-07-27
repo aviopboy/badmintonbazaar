@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight, BadgeCheck, Check, ChevronDown, CreditCard, Edit3, Heart,
   LayoutDashboard, Loader2, Menu, Minus, Package, Play, Plus, Search,
@@ -10,6 +10,7 @@ import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
 import { sendOrderEmail, sendStatusEmail } from "./lib/email";
 import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder, listUsers as listApiUsers, createUser as createApiUser, patchUser as patchApiUser, deleteUser as deleteApiUser } from "@workspace/api-client-react";
+import { useLocation, Router } from "wouter";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -384,7 +385,25 @@ function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => storage.get<User | null>("bb-current-user", null));
   const [cart, setCart] = useState<CartLine[]>(() => storage.get("bb-cart", []));
   const [wishlist, setWishlist] = useState<string[]>(() => storage.get("bb-wishlist", []));
-  const [view, setView] = useState<View>("store");
+  const [location, setLocation] = useLocation();
+  const [view, setViewState] = useState<View>(() => {
+    if (location.startsWith("/admin")) return "admin";
+    if (location.startsWith("/account")) return "account";
+    return "store";
+  });
+  const setView = useCallback((v: View) => {
+    setViewState(v);
+    if (v === "admin") setLocation("/admin/orders");
+    else if (v === "account") setLocation("/account");
+    else setLocation("/");
+  }, [setLocation]);
+  // Sync browser back / forward to view state
+  useEffect(() => {
+    if (location.startsWith("/admin") && view !== "admin") setViewState("admin");
+    else if (location.startsWith("/account") && view !== "account") setViewState("account");
+    else if (location === "/" && view !== "store") setViewState("store");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
   const [modal, setModal] = useState<Modal>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [category, setCategory] = useState<"All" | Category>("All");
@@ -397,6 +416,9 @@ function App() {
   const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [ordersRefreshing, setOrdersRefreshing] = useState(false);
+  const syncOrdersFnRef = useRef<(() => Promise<void>) | null>(null);
+  const ordersRefreshingRef = useRef(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const clearCart = () => setCart([]);
@@ -436,14 +458,28 @@ function App() {
         if (!cancelled) setOrdersLoaded(true);
       }
     };
+    syncOrdersFnRef.current = syncOrders;
 
     void syncOrders();
     const refreshTimer = window.setInterval(() => { void syncOrders(); }, 15_000);
     return () => {
       cancelled = true;
+      syncOrdersFnRef.current = null;
       window.clearInterval(refreshTimer);
     };
   }, [currentUser]);
+
+  const refreshOrders = useCallback(async () => {
+    if (!syncOrdersFnRef.current || ordersRefreshingRef.current) return;
+    ordersRefreshingRef.current = true;
+    setOrdersRefreshing(true);
+    try {
+      await syncOrdersFnRef.current();
+    } finally {
+      ordersRefreshingRef.current = false;
+      setOrdersRefreshing(false);
+    }
+  }, []);
 
   // ── Admin: sync user list from shared DB ──────────────────────
   useEffect(() => {
@@ -456,7 +492,7 @@ function App() {
           setUsers((prev) => {
             // Merge: keep the seed admin always, add/update everything from API
             const byId = new Map(prev.map((u) => [u.id, u]));
-            apiUsers.forEach((u) => byId.set(u.id, u as User));
+            apiUsers.forEach((u: User) => byId.set(u.id, u));
             // Always keep the local admin account in case it isn't in the DB yet
             if (!byId.has("u-admin")) byId.set("u-admin", seedUsers[0]);
             return [...byId.values()].sort((a, b) => (a.admin === b.admin ? 0 : a.admin ? -1 : 1));
@@ -560,14 +596,14 @@ function App() {
     storage.set("bb-orders-v1", [order, ...backup.filter((o) => o.id !== order.id)]);
     // Save to shared database in the background
     createSharedOrder(order)
-      .then((sharedOrder) => {
+      .then((sharedOrder: Order) => {
         setOrders((prev) => prev.map((o) => o.id === sharedOrder.id ? sharedOrder : o));
         // Confirmed in DB — remove from localStorage backup
         const current = storage.get<Order[]>("bb-orders-v1", []);
         storage.set("bb-orders-v1", current.filter((o) => o.id !== sharedOrder.id));
       })
-      .catch((err) => {
-        console.warn("[Badminton Bazaar] Background order sync failed — will retry on next login:", err);
+      .catch((_err: unknown) => {
+        console.warn("[Badminton Bazaar] Background order sync failed — will retry on next login:", _err);
       });
     toast(`Payment proof saved. Invoice ${order.id} is pending review.`);
     return order;
@@ -618,7 +654,8 @@ function App() {
           orders={orders} updateOrder={updateOrder} deleteOrder={deleteOrder}
           toast={toast} modal={modal} setModal={setModal}
           editingProduct={editingProduct} setEditingProduct={setEditingProduct}
-          saveProduct={saveProduct} deleteProduct={deleteProduct} />
+          saveProduct={saveProduct} deleteProduct={deleteProduct}
+          refreshOrders={refreshOrders} ordersRefreshing={ordersRefreshing} />
       )}
       {view === "admin" && !currentUser?.admin && (
         <div className="gate-screen">
@@ -1704,7 +1741,7 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
 /* ════════════════════════════════════════════════════════════════
    ADMIN PANEL
 ══════════════════════════════════════════════════════════════════ */
-function Admin({ products, users, setUsers, heroBackground, setHeroBackground, founderEmail, setFounderEmail, orders, updateOrder, deleteOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct }: {
+function Admin({ products, users, setUsers, heroBackground, setHeroBackground, founderEmail, setFounderEmail, orders, updateOrder, deleteOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct, refreshOrders, ordersRefreshing }: {
   products: Product[]; users: User[]; setUsers: (v: User[]) => void;
   heroBackground: string; setHeroBackground: (v: string) => void;
   founderEmail: string; setFounderEmail: (v: string) => void; orders: Order[];
@@ -1713,12 +1750,19 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
   toast: (msg: string, err?: boolean) => void; modal: Modal; setModal: (v: Modal) => void;
   editingProduct: Product | null; setEditingProduct: (p: Product | null) => void;
   saveProduct: (p: Product) => void; deleteProduct: (id: string) => void;
+  refreshOrders: () => Promise<void>; ordersRefreshing: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "users" | "settings">("orders");
+  const [location, setLocation] = useLocation();
+  const activeTab = ((): "products" | "orders" | "users" | "settings" => {
+    if (location.endsWith("/products")) return "products";
+    if (location.endsWith("/users")) return "users";
+    if (location.endsWith("/settings")) return "settings";
+    return "orders";
+  })();
+  const setActiveTab = (tab: "products" | "orders" | "users" | "settings") => setLocation(`/admin/${tab}`);
   const [bgUrl, setBgUrl] = useState(heroBackground);
   const [founderEmailDraft, setFounderEmailDraft] = useState(founderEmail);
-  // Non-admin users only (admin accounts hidden from public display)
-  const allDisplayUsers = users; // admin sees all
+  const allDisplayUsers = users;
 
   return (
     <main className="admin-page">
@@ -1745,7 +1789,22 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
 
         {activeTab === "orders" && (
           <div className="admin-panel">
-            <div className="panel-header"><div><h2>Payment Review</h2><p className="panel-subtitle">Review the uploaded proof before contacting the customer or approving dispatch.</p></div><span className="panel-count">{orders.length} invoices</span></div>
+            <div className="panel-header">
+              <div><h2>Payment Review</h2><p className="panel-subtitle">Review the uploaded proof before contacting the customer or approving dispatch.</p></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="panel-count">{orders.length} invoices</span>
+                <button
+                  className="btn-ghost btn-small"
+                  onClick={refreshOrders}
+                  disabled={ordersRefreshing}
+                  title="Refresh orders"
+                  style={{ display: "flex", alignItems: "center", gap: 5 }}
+                >
+                  <RefreshCw size={14} className={ordersRefreshing ? "spin" : ""} />
+                  {ordersRefreshing ? "Refreshing…" : "Refresh"}
+                </button>
+              </div>
+            </div>
             {orders.length === 0 ? <div className="empty-state admin-empty"><Package size={28} /><strong>No payment proofs yet</strong><span>New checkout submissions will appear here.</span></div> : (
               <div className="order-review-list">
                 {orders.map((order) => <OrderReviewCard key={order.id} order={order} updateOrder={updateOrder} deleteOrder={deleteOrder} toast={toast} />)}
@@ -2011,4 +2070,7 @@ function SiteFooter({ setView, setCategory }: { setView: (v: View) => void; setC
   );
 }
 
-export default App;
+function AppRoot() {
+  return <Router><App /></Router>;
+}
+export default AppRoot;
