@@ -24,7 +24,7 @@ async function formPost(
   payload: Record<string, string>
 ): Promise<void> {
   const res = await fetch(
-    `https://formsubmit.co/ajax/${encodeURIComponent(toEmail)}`,
+    `https://formsubmit.co/ajax/${toEmail}`,
     {
       method: "POST",
       headers: {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight, BadgeCheck, Check, ChevronDown, CreditCard, Edit3, Heart,
-  LayoutDashboard, Loader2, Minus, Package, Play, Plus, Search,
+  LayoutDashboard, Loader2, Menu, Minus, Package, Play, Plus, Search,
   ShieldCheck, ShoppingBag, Sparkles, Trash2, Truck, Upload, UserPlus, UserRound,
   X, Eye, EyeOff, RefreshCw, Video, Phone, Mail, Download, FileImage,
 } from "lucide-react";
@@ -586,6 +586,12 @@ function App() {
 /* ════════════════════════════════════════════════════════════════
    TOP NAV
 ══════════════════════════════════════════════════════════════════ */
+const MOBILE_NAV_CATS: Category[] = [
+  "Rackets", "Shoes", "Shuttlecocks", "Strings", "Grips",
+  "Kit Bags", "Apparel", "Socks", "Accessories", "Wristbands",
+  "Injury Support", "Training & Fitness", "Court Equipment",
+];
+
 function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, view, setCategory, setAuthMode, setAuthError }: {
   currentUser: User | null; cartCount: number; query: string; setQuery: (v: string) => void;
   setModal: (v: Modal) => void; setView: (v: View) => void; view: View;
@@ -593,7 +599,10 @@ function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, vi
   setAuthError: (v: string) => void;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <header className="site-header">
@@ -605,7 +614,7 @@ function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, vi
       </div>
       <nav className="nav-main">
         <div className="nav-inner">
-          <button className="brand-btn" onClick={() => { setView("store"); setCategory("All"); }} data-testid="button-home">
+          <button className="brand-btn" onClick={() => { setView("store"); setCategory("All"); closeMobileMenu(); }} data-testid="button-home">
             <img src={logoImg} alt="Badminton Bazaar" className="brand-logo-img" />
             <div className="brand-text">
               <span className="brand-name">Badminton Bazaar</span>
@@ -645,9 +654,65 @@ function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, vi
               <ShoppingBag size={20} />
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </button>
+            {/* Hamburger — mobile only */}
+            <button
+              className="icon-btn mobile-menu-btn"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              title="Menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
           </div>
         </div>
       </nav>
+
+      {/* Mobile navigation panel */}
+      {mobileMenuOpen && (
+        <div className="mobile-nav" role="navigation" aria-label="Mobile menu">
+          {currentUser?.admin && (
+            <button
+              className={`mobile-admin-link ${view === "admin" ? "active" : ""}`}
+              onClick={() => { setView("admin"); closeMobileMenu(); }}
+              data-testid="button-open-admin-mobile"
+            >
+              <LayoutDashboard size={17} />
+              Admin Panel
+            </button>
+          )}
+          <div className="mobile-nav-section-label">Categories</div>
+          <div className="mobile-nav-cats">
+            <button
+              className="mobile-cat-btn"
+              onClick={() => { setView("store"); setCategory("All"); closeMobileMenu(); }}
+            >
+              All Products
+            </button>
+            {MOBILE_NAV_CATS.map((cat) => (
+              <button
+                key={cat}
+                className="mobile-cat-btn"
+                onClick={() => { setView("store"); setCategory(cat); closeMobileMenu(); }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div className="mobile-nav-bottom">
+            <button
+              className="mobile-nav-account-btn"
+              onClick={() => {
+                if (currentUser) setView("account");
+                else { setAuthMode("login"); setAuthError(""); setModal("auth"); }
+                closeMobileMenu();
+              }}
+            >
+              <UserRound size={16} />
+              {currentUser ? `My Account (${currentUser.name})` : "Sign In / Register"}
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
