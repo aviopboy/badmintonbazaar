@@ -25,7 +25,19 @@ app.use(
     },
   }),
 );
-app.use(cors());
+// CORS_ORIGIN: comma-separated list of allowed origins.
+// Leave unset in dev (allows all). Set to your CF Pages domain in production,
+// e.g. CORS_ORIGIN=https://badminton-bazaar.pages.dev
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
+  : [];
+
+app.use(
+  cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
