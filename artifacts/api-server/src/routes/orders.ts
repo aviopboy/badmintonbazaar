@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import { asc, eq } from "drizzle-orm";
 import { db, ordersTable } from "@workspace/db";
 import {
@@ -11,7 +11,7 @@ import {
   UpdateOrderResponse,
 } from "@workspace/api-zod";
 
-const router: IRouter = Router();
+const router = Router();
 
 function toApiOrder(row: typeof ordersTable.$inferSelect) {
   return ListOrdersResponseItem.parse({
