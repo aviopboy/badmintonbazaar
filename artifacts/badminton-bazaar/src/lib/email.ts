@@ -99,6 +99,8 @@ export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
   await formPost(target, {
     _subject: `🛒 New Order #${params.orderId} — Badminton Bazaar`,
     _replyto: params.customerEmail,
+    // CC the customer so they also receive the order confirmation
+    _cc: params.customerEmail,
 
     "Order ID": params.orderId,
     "Order Date": orderDate,

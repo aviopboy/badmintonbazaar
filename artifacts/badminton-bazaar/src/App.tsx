@@ -523,11 +523,19 @@ function App() {
       items,
       total: cartTotal,
     };
-    const sharedOrder = await createSharedOrder(order);
-    setOrders((prev) => [sharedOrder, ...prev.filter((existing) => existing.id !== sharedOrder.id)]);
+    // Add to local state and clear cart immediately — don't wait for API
+    setOrders((prev) => [order, ...prev.filter((existing) => existing.id !== order.id)]);
     clearCart();
-    toast(`Payment proof saved to your account. Invoice ${sharedOrder.id} is pending review.`);
-    return sharedOrder;
+    // Save to shared database in the background; failures are logged but don't block checkout
+    createSharedOrder(order)
+      .then((sharedOrder) => {
+        setOrders((prev) => prev.map((o) => o.id === sharedOrder.id ? sharedOrder : o));
+      })
+      .catch((err) => {
+        console.warn("[Badminton Bazaar] Background order sync failed (order is still saved locally):", err);
+      });
+    toast(`Payment proof saved. Invoice ${order.id} is pending review.`);
+    return order;
   };
 
   const updateOrder = async (id: string, status: OrderStatus, reviewMessage: string) => {
@@ -1155,23 +1163,15 @@ function CheckoutModal({
     if (!paymentProof) { setError("Upload a screenshot or image of your payment proof."); return; }
     setSending(true);
     setError("");
-    let order: Order;
-    try {
-      order = await submitOrder({
-        customerName: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        address: address.trim(),
-        additionalContact: additionalContact.trim(),
-        paymentReference: paymentReference.trim(),
-        paymentProof,
-      });
-    } catch (err) {
-      console.error("[Badminton Bazaar] Shared order save failed:", err);
-      setSending(false);
-      setError("We couldn't save your order to your account. Please try again.");
-      return;
-    }
+    const order = await submitOrder({
+      customerName: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      address: address.trim(),
+      additionalContact: additionalContact.trim(),
+      paymentReference: paymentReference.trim(),
+      paymentProof,
+    });
     let sent = false;
     try {
       await sendOrderEmail({
