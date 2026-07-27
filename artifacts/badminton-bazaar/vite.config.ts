@@ -5,21 +5,13 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-// PORT and BASE_PATH are only required when running the dev/preview server.
-// During a static build (e.g. Cloudflare Pages, Vercel) they are optional.
-const isBuild = process.env.npm_lifecycle_script?.includes('vite build') ||
-  process.argv.includes('build');
-
-const rawPort = process.env.PORT;
-if (!rawPort && !isBuild) {
-  throw new Error('PORT environment variable is required but was not provided.');
-}
-const port = rawPort ? Number(rawPort) : 3000;
-if (!isBuild && (Number.isNaN(port) || port <= 0)) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
+// PORT and BASE_PATH are required at runtime (dev/preview) but not during
+// static builds. Provide safe defaults so `vite build` works in CI/CD
+// environments that don't inject these variables.
+const port = Number(process.env.PORT ?? 5173);
 const basePath = process.env.BASE_PATH ?? '/';
+
+const apiPort = Number(process.env.API_PORT ?? 8080);
 
 export default defineConfig({
   base: basePath,
@@ -68,7 +60,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: `http://localhost:${apiPort}`,
         changeOrigin: true,
       },
     },
