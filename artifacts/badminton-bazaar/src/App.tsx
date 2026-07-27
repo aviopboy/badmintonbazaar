@@ -1201,7 +1201,7 @@ function AddUserModal({ close, users, setUsers, toast }: {
 /* ════════════════════════════════════════════════════════════════
    ACCOUNT PAGE
 ══════════════════════════════════════════════════════════════════ */
-function Account({ user, updateUser, signOut, toast }: {
+function Account({ user, orders, updateUser, signOut, toast }: {
   user: User; orders: Order[]; updateUser: (u: User) => void; signOut: () => void; toast: (msg: string, err?: boolean) => void;
 }) {
   const [newEmail, setNewEmail] = useState(user.email);
