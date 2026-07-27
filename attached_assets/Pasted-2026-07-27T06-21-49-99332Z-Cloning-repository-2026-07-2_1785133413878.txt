@@ -1,0 +1,112 @@
+2026-07-27T06:21:49.99332Z	Cloning repository...
+2026-07-27T06:21:51.072297Z	From https://github.com/aviopboy/badmintonbazaar
+2026-07-27T06:21:51.072548Z	 * branch            bd779f3999c637d2cccff1e86456e59ade536081 -> FETCH_HEAD
+2026-07-27T06:21:51.072598Z	
+2026-07-27T06:21:51.114329Z	HEAD is now at bd779f3 fix: remove api/index.ts to resolve Vercel path conflict with api/index.js
+2026-07-27T06:21:51.114669Z	
+2026-07-27T06:21:51.159853Z	
+2026-07-27T06:21:51.160381Z	Using v2 root directory strategy
+2026-07-27T06:21:51.174386Z	Success: Finished cloning repository files
+2026-07-27T06:21:53.060251Z	Checking for configuration in a Wrangler configuration file (BETA)
+2026-07-27T06:21:53.060633Z	
+2026-07-27T06:21:53.211177Z	No Wrangler configuration file found. Continuing.
+2026-07-27T06:21:53.797131Z	Detected the following tools from environment: pnpm@10.26.1, nodejs@22.16.0
+2026-07-27T06:21:54.643023Z	Preparing pnpm@10.26.1 for immediate activation...
+2026-07-27T06:21:57.305154Z	Installing project dependencies: pnpm install
+2026-07-27T06:21:57.795949Z	Scope: all 9 workspace projects
+2026-07-27T06:21:57.866712Z	Lockfile is up to date, resolution step is skipped
+2026-07-27T06:21:57.908706Z	Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-07-27T06:21:57.955049Z	Packages: +474
+2026-07-27T06:21:57.957126Z	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-07-27T06:21:58.911795Z	Progress: resolved 474, reused 0, downloaded 227, added 135
+2026-07-27T06:21:59.910996Z	Progress: resolved 474, reused 0, downloaded 298, added 182
+2026-07-27T06:22:00.911854Z	Progress: resolved 474, reused 0, downloaded 396, added 233
+2026-07-27T06:22:01.912937Z	Progress: resolved 474, reused 0, downloaded 473, added 473
+2026-07-27T06:22:02.337158Z	Progress: resolved 474, reused 0, downloaded 474, added 474, done
+2026-07-27T06:22:02.793847Z	.../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+2026-07-27T06:22:02.874746Z	.../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+2026-07-27T06:22:03.424512Z	
+2026-07-27T06:22:03.425428Z	dependencies:
+2026-07-27T06:22:03.425566Z	+ @replit/connectors-sdk 0.4.1
+2026-07-27T06:22:03.42563Z	
+2026-07-27T06:22:03.42568Z	devDependencies:
+2026-07-27T06:22:03.425766Z	+ prettier 3.9.5
+2026-07-27T06:22:03.42583Z	+ typescript 5.9.3
+2026-07-27T06:22:03.425918Z	
+2026-07-27T06:22:03.479562Z	. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-07-27T06:22:03.497535Z	. preinstall: Done
+2026-07-27T06:22:03.654912Z	Done in 6.1s using pnpm v10.26.1
+2026-07-27T06:22:03.702643Z	Executing user command: pnpm run build
+2026-07-27T06:22:04.181038Z	
+2026-07-27T06:22:04.181335Z	> workspace@0.0.0 build /opt/buildhome/repo
+2026-07-27T06:22:04.181409Z	> pnpm run typecheck && pnpm -r --if-present run build
+2026-07-27T06:22:04.181529Z	
+2026-07-27T06:22:04.563503Z	
+2026-07-27T06:22:04.563763Z	> workspace@0.0.0 typecheck /opt/buildhome/repo
+2026-07-27T06:22:04.563846Z	> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+2026-07-27T06:22:04.563932Z	
+2026-07-27T06:22:04.913142Z	
+2026-07-27T06:22:04.913725Z	> workspace@0.0.0 typecheck:libs /opt/buildhome/repo
+2026-07-27T06:22:04.91382Z	> tsc --build
+2026-07-27T06:22:04.91386Z	
+2026-07-27T06:22:07.914348Z	Scope: 4 of 9 workspace projects
+2026-07-27T06:22:07.921575Z	artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+2026-07-27T06:22:07.922297Z	artifacts/badminton-bazaar typecheck$ tsc -p tsconfig.json --noEmit
+2026-07-27T06:22:07.922666Z	artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+2026-07-27T06:22:07.923194Z	scripts typecheck$ tsc -p tsconfig.json --noEmit
+2026-07-27T06:22:09.450529Z	scripts typecheck: Done
+2026-07-27T06:22:11.044103Z	artifacts/api-server typecheck: Done
+2026-07-27T06:22:14.961013Z	artifacts/mockup-sandbox typecheck: Done
+2026-07-27T06:22:16.055538Z	artifacts/badminton-bazaar typecheck: Done
+2026-07-27T06:22:16.502984Z	Scope: 8 of 9 workspace projects
+2026-07-27T06:22:16.508828Z	artifacts/mockup-sandbox build$ vite build
+2026-07-27T06:22:16.905178Z	artifacts/mockup-sandbox build: [36mvite v7.3.6 [32mbuilding client environment for production...[36m[39m
+2026-07-27T06:22:16.982603Z	artifacts/mockup-sandbox build: transforming...
+2026-07-27T06:22:17.818331Z	artifacts/mockup-sandbox build: [32m✓[39m 30 modules transformed.
+2026-07-27T06:22:17.96979Z	artifacts/mockup-sandbox build: rendering chunks...
+2026-07-27T06:22:17.976193Z	artifacts/mockup-sandbox build: computing gzip size...
+2026-07-27T06:22:17.983095Z	artifacts/mockup-sandbox build: [2mdist/[22m[32mindex.html                 [39m[1m[2m  4.42 kB[22m[1m[22m[2m │ gzip:  1.23 kB[22m
+2026-07-27T06:22:17.983582Z	artifacts/mockup-sandbox build: [2mdist/[22m[2massets/[22m[35mindex-C4GxwS3y.css  [39m[1m[2m 88.37 kB[22m[1m[22m[2m │ gzip: 14.82 kB[22m
+2026-07-27T06:22:17.983921Z	artifacts/mockup-sandbox build: [2mdist/[22m[2massets/[22m[36mindex-CqOx4XgY.js   [39m[1m[2m187.72 kB[22m[1m[22m[2m │ gzip: 59.51 kB[22m
+2026-07-27T06:22:17.984023Z	artifacts/mockup-sandbox build: [32m✓ built in 1.05s[39m
+2026-07-27T06:22:18.015766Z	artifacts/mockup-sandbox build: Done
+2026-07-27T06:22:18.016762Z	artifacts/api-server build$ node ./build.mjs
+2026-07-27T06:22:18.017155Z	artifacts/badminton-bazaar build$ vite build --config vite.config.ts
+2026-07-27T06:22:18.340334Z	artifacts/badminton-bazaar build: [36mvite v7.3.6 [32mbuilding client environment for production...[36m[39m
+2026-07-27T06:22:18.376406Z	artifacts/api-server build:   dist/index.mjs                       1.8mb ⚠️
+2026-07-27T06:22:18.377102Z	artifacts/api-server build:   dist/pino-worker.mjs               153.4kb
+2026-07-27T06:22:18.377336Z	artifacts/api-server build:   dist/pino-file.mjs                 142.1kb
+2026-07-27T06:22:18.377545Z	artifacts/api-server build:   dist/pino-pretty.mjs               114.4kb
+2026-07-27T06:22:18.377655Z	artifacts/api-server build:   dist/thread-stream-worker.mjs        7.3kb
+2026-07-27T06:22:18.377962Z	artifacts/api-server build:   dist/index.mjs.map                   3.0mb
+2026-07-27T06:22:18.378174Z	artifacts/api-server build:   dist/pino-worker.mjs.map           256.9kb
+2026-07-27T06:22:18.378373Z	artifacts/api-server build:   dist/pino-file.mjs.map             229.0kb
+2026-07-27T06:22:18.378451Z	artifacts/api-server build:   dist/pino-pretty.mjs.map           203.6kb
+2026-07-27T06:22:18.37851Z	artifacts/api-server build:   dist/thread-stream-worker.mjs.map   12.0kb
+2026-07-27T06:22:18.378568Z	artifacts/api-server build: ⚡ Done in 274ms
+2026-07-27T06:22:18.379402Z	artifacts/api-server build: ✘ [ERROR] Could not resolve "/opt/buildhome/repo/artifacts/api-server/api/index.ts"
+2026-07-27T06:22:18.379894Z	artifacts/api-server build: 1 error
+2026-07-27T06:22:18.382522Z	artifacts/api-server build: Error: Build failed with 1 error:
+2026-07-27T06:22:18.382734Z	artifacts/api-server build: error: Could not resolve "/opt/buildhome/repo/artifacts/api-server/api/index.ts"
+2026-07-27T06:22:18.382854Z	artifacts/api-server build:     at failureErrorWithLog (/opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:1467:15)
+2026-07-27T06:22:18.382968Z	artifacts/api-server build:     at /opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:926:25
+2026-07-27T06:22:18.383082Z	artifacts/api-server build:     at /opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:878:52
+2026-07-27T06:22:18.383173Z	artifacts/api-server build:     at buildResponseToResult (/opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:924:7)
+2026-07-27T06:22:18.384394Z	artifacts/api-server build:     at /opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:951:16
+2026-07-27T06:22:18.384676Z	artifacts/api-server build:     at responseCallbacks.<computed> (/opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:603:9)
+2026-07-27T06:22:18.384813Z	artifacts/api-server build:     at handleIncomingPacket (/opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:658:12)
+2026-07-27T06:22:18.384898Z	artifacts/api-server build:     at Socket.readFromStdout (/opt/buildhome/repo/node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild/lib/main.js:581:7)
+2026-07-27T06:22:18.385088Z	artifacts/api-server build:     at Socket.emit (node:events:518:28)
+2026-07-27T06:22:18.385191Z	artifacts/api-server build:     at addChunk (node:internal/streams/readable:561:12) {
+2026-07-27T06:22:18.38597Z	artifacts/api-server build:   errors: [Getter/Setter],
+2026-07-27T06:22:18.386104Z	artifacts/api-server build:   warnings: [Getter/Setter]
+2026-07-27T06:22:18.386202Z	artifacts/api-server build: }
+2026-07-27T06:22:18.400964Z	artifacts/api-server build: Failed
+2026-07-27T06:22:18.416203Z	/opt/buildhome/repo/artifacts/api-server:
+2026-07-27T06:22:18.416424Z	 ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+2026-07-27T06:22:18.416494Z	Exit status 1
+2026-07-27T06:22:18.422413Z	artifacts/badminton-bazaar build: transforming...
+2026-07-27T06:22:18.464976Z	 ELIFECYCLE  Command failed with exit code 1.
+2026-07-27T06:22:18.486654Z	Failed: Error while executing user command. Exited with error code: 1
+2026-07-27T06:22:18.493091Z	Failed: build command exited with code: 1
+2026-07-27T06:22:19.144811Z	Failed: error occurred while running build command

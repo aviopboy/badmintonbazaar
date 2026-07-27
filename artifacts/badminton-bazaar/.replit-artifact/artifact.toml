@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Badminton Bazaar"
+version = "1.0.0"
+id = "artifacts/badminton-bazaar"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26050
+
+[services.development]
+run = "pnpm --filter @workspace/badminton-bazaar run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/badminton-bazaar", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/badminton-bazaar/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26050"
+BASE_PATH = "/"
