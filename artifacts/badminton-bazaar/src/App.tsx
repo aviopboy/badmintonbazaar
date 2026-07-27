@@ -773,6 +773,43 @@ function Ticker() {
 /* ════════════════════════════════════════════════════════════════
    STOREFRONT
 ══════════════════════════════════════════════════════════════════ */
+const HERO_PHRASES = [
+  "ABSOLUTE POWER",
+  "PURE PRECISION",
+  "TOTAL CONTROL",
+  "UNMATCHED SPEED",
+] as const;
+
+const VISIBLE_MS = 1800;
+const BLINK_MS   = 700;
+const HIDDEN_MS  = 180;
+
+function HeroPhrase() {
+  const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<"visible" | "blinking" | "hidden">("visible");
+
+  useEffect(() => {
+    let id: ReturnType<typeof setTimeout>;
+    if (phase === "visible") {
+      id = setTimeout(() => setPhase("blinking"), VISIBLE_MS);
+    } else if (phase === "blinking") {
+      id = setTimeout(() => setPhase("hidden"), BLINK_MS);
+    } else {
+      id = setTimeout(() => {
+        setIndex((i) => (i + 1) % HERO_PHRASES.length);
+        setPhase("visible");
+      }, HIDDEN_MS);
+    }
+    return () => clearTimeout(id);
+  }, [phase]);
+
+  return (
+    <em className={`hero-phrase hero-phrase--${phase}`} aria-live="polite">
+      {HERO_PHRASES[index]}
+    </em>
+  );
+}
+
 function Storefront({ products, allProducts, category, setCategory, sort, setSort, query, openProduct, addToCart, wishlist, toggleWishlist, heroBackground }: {
   products: Product[]; allProducts: Product[]; category: "All" | Category;
   setCategory: (v: "All" | Category) => void; sort: string; setSort: (v: string) => void;
@@ -788,7 +825,7 @@ function Storefront({ products, allProducts, category, setCategory, sort, setSor
         <div className="hero-overlay" />
         <div className="hero-content">
           <p className="hero-eyebrow">THE NEW STANDARD</p>
-          <h1 className="hero-title">UNLEASH<br /><em>ABSOLUTE POWER</em></h1>
+          <h1 className="hero-title">UNLEASH<br /><HeroPhrase /></h1>
           <p className="hero-sub">Competition-ready rackets, shoes, shuttles & more for India's finest courts.</p>
           <button className="btn-hero" onClick={() => document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" })}>
             EXPLORE NOW <ArrowRight size={16} />

@@ -14,7 +14,12 @@ function getPool(): pg.Pool {
         "DATABASE_URL must be set. Did you forget to provision a database?",
       );
     }
-    _pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    _pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      // Required for connections from hosted environments (Vercel, etc.)
+      // that reach external PostgreSQL over TLS.
+      ssl: process.env.DB_SSL === "false" ? false : { rejectUnauthorized: false },
+    });
   }
   return _pool;
 }
