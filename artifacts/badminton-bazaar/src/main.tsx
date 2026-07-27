@@ -5,12 +5,12 @@ import App from './App';
 
 import './index.css';
 
-// In production (Cloudflare Pages), VITE_API_URL must point to the deployed
-// API server, e.g. https://api-server.username.replit.app
-// In development the Vite proxy forwards /api to localhost:8080 automatically.
-const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
-if (apiUrl) {
-  setBaseUrl(apiUrl);
-}
+// VITE_API_URL should be set in your Cloudflare Pages environment variables.
+// Falls back to the production Vercel API server if the variable is not provided.
+const apiUrl =
+  (import.meta.env.VITE_API_URL as string | undefined) ||
+  'https://badmintonbazaar-api-server.vercel.app';
+
+setBaseUrl(apiUrl);
 
 createRoot(document.getElementById('root')!).render(<App />);
