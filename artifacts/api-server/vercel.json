@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "node ./build.mjs",
   "functions": {
-    "api/index.js": {
+    "api/index.ts": {
       "maxDuration": 30
     }
   },
