@@ -8,7 +8,7 @@ import {
 import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
-import { sendOrderEmail } from "./lib/email";
+import { sendOrderEmail, sendStatusEmail } from "./lib/email";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Category =
@@ -901,7 +901,7 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
         {cart.length > 0 && (
           <div className="drawer-footer">
             <div className="total-row"><span>Order Total</span><span data-testid="text-cart-total">{money(total)}</span></div>
-            <button className="btn-primary btn-full" onClick={() => { if (requireAuth()) { close(); setModal("checkout"); } }} data-testid="button-checkout">
+            <button className="btn-primary btn-full" onClick={() => { close(); setModal("checkout"); }} data-testid="button-checkout">
               <CreditCard size={16} /> Proceed to Checkout
             </button>
             <p className="demo-note">Pay securely via UPI on the next step.</p>
@@ -1322,15 +1322,57 @@ function OrderReviewCard({ order, updateOrder, toast }: {
   updateOrder: (id: string, status: OrderStatus, message: string) => void;
   toast: (msg: string, err?: boolean) => void;
 }) {
-  const [message, setMessage] = useState(order.reviewMessage);
+  const [step, setStep] = useState<"idle" | "approving" | "rejecting">("idle");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [rejectionReason, setRejectionReason] = useState(order.reviewMessage || "");
+  const [sending, setSending] = useState(false);
   const isPending = order.status === "pending";
-  const review = (status: OrderStatus) => {
-    const nextMessage = status === "approved"
-      ? "Payment approved. Your order is being prepared for dispatch."
-      : message.trim() || "We could not verify this payment. Please contact us so we can help complete your order.";
-    updateOrder(order.id, status, nextMessage);
-    toast(status === "approved" ? `${order.id} approved.` : `${order.id} marked for customer follow-up.`);
+
+  const confirmApprove = async () => {
+    if (!deliveryDate.trim()) return;
+    setSending(true);
+    const msg = `Your payment has been approved! Your order is being prepared for dispatch. Estimated delivery: ${deliveryDate}.`;
+    updateOrder(order.id, "approved", msg);
+    try {
+      await sendStatusEmail({
+        customerEmail: order.email,
+        customerName: order.customerName,
+        orderId: order.id,
+        status: "approved",
+        statusMessage: `Your payment has been verified and your order is confirmed.\nEstimated delivery: ${deliveryDate}`,
+        items: order.items,
+        total: order.total,
+      });
+      toast(`${order.id} approved — customer notified by email.`);
+    } catch {
+      toast(`${order.id} approved. Customer email failed — contact them manually.`, true);
+    }
+    setSending(false);
+    setStep("idle");
   };
+
+  const confirmReject = async () => {
+    setSending(true);
+    const reason = rejectionReason.trim() || "We could not verify your payment. Please contact us so we can help complete your order.";
+    updateOrder(order.id, "rejected", reason);
+    try {
+      await sendStatusEmail({
+        customerEmail: order.email,
+        customerName: order.customerName,
+        orderId: order.id,
+        status: "rejected",
+        statusMessage: reason,
+        items: order.items,
+        total: order.total,
+      });
+      toast(`${order.id} rejected — customer notified by email.`);
+    } catch {
+      toast(`${order.id} rejected. Customer email failed — contact them manually.`, true);
+    }
+    setSending(false);
+    setStep("idle");
+  };
+
   return (
     <article className={`order-review-card ${order.status}`} data-testid={`order-review-${order.id}`}>
       <div className="order-review-head">
@@ -1357,18 +1399,84 @@ function OrderReviewCard({ order, updateOrder, toast }: {
           <a className="btn-ghost btn-small" href={order.paymentProof} download={`${order.id}-payment-proof`}><Download size={14} /> Download proof</a>
         </div>
       </div>
-      {isPending ? (
+
+      {isPending && step === "idle" && (
         <div className="review-actions">
-          <textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Optional message for the customer if payment is not recognized…" aria-label={`Review message for ${order.id}`} />
           <div className="review-buttons">
             <a className="btn-ghost btn-small" href={`tel:${order.phone}`}><Phone size={14} /> Call customer</a>
             <a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Email customer</a>
-            <button className="btn-danger btn-small" onClick={() => review("rejected")} data-testid={`button-reject-${order.id}`}>Reject / Follow up</button>
-            <button className="btn-primary btn-small" onClick={() => review("approved")} data-testid={`button-approve-${order.id}`}><Check size={14} /> Approve payment</button>
+            <button className="btn-danger btn-small" onClick={() => { setStep("rejecting"); }} data-testid={`button-reject-${order.id}`}>
+              Reject / Follow up
+            </button>
+            <button className="btn-primary btn-small" onClick={() => { setStep("approving"); }} data-testid={`button-approve-${order.id}`}>
+              <Check size={14} /> Approve payment
+            </button>
           </div>
         </div>
-      ) : (
-        <div className="review-complete"><span>{order.reviewMessage}</span><a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Contact customer</a></div>
+      )}
+
+      {isPending && step === "approving" && (
+        <div className="review-actions">
+          <p style={{ fontSize: 13, color: "rgb(var(--neon-cyan))", marginBottom: 6 }}>
+            Enter the estimated delivery date — this will be emailed to the customer.
+          </p>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor={`delivery-date-${order.id}`}>Estimated Delivery Date</label>
+            <input
+              id={`delivery-date-${order.id}`}
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
+              placeholder="e.g. 3–5 business days, or 20 July 2026"
+              autoFocus
+            />
+          </div>
+          <div className="review-buttons">
+            <button className="btn-ghost btn-small" onClick={() => setStep("idle")} disabled={sending}>Cancel</button>
+            <button
+              className="btn-primary btn-small"
+              onClick={confirmApprove}
+              disabled={!deliveryDate.trim() || sending}
+              data-testid={`button-confirm-approve-${order.id}`}
+            >
+              {sending ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
+              {sending ? "Sending…" : "Confirm & Notify Customer"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isPending && step === "rejecting" && (
+        <div className="review-actions">
+          <p style={{ fontSize: 13, color: "rgb(var(--danger))", marginBottom: 6 }}>
+            Enter the rejection reason — this will be emailed to the customer.
+          </p>
+          <textarea
+            rows={3}
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="e.g. Payment amount did not match the order total. Please retry or contact us for help."
+            autoFocus
+          />
+          <div className="review-buttons">
+            <button className="btn-ghost btn-small" onClick={() => setStep("idle")} disabled={sending}>Cancel</button>
+            <button
+              className="btn-danger btn-small"
+              onClick={confirmReject}
+              disabled={sending}
+              data-testid={`button-confirm-reject-${order.id}`}
+            >
+              {sending ? <Loader2 size={14} className="spin" /> : null}
+              {sending ? "Sending…" : "Confirm Rejection & Notify"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isPending && (
+        <div className="review-complete">
+          <span>{order.reviewMessage}</span>
+          <a className="btn-ghost btn-small" href={`mailto:${order.email}`}><Mail size={14} /> Contact customer</a>
+        </div>
       )}
     </article>
   );
