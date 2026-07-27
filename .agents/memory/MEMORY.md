@@ -1,0 +1,2 @@
+- [Email provider](email-provider.md) — switched from EmailJS to formsubmit.co; only VITE_FOUNDER_EMAIL needed; customer status emails are CC'd from the founder endpoint.
+- [Mobile overflow fix](mobile-overflow.md) — horizontal swipe black screen was caused by missing overflow-x:hidden on html/body; fixed with overscroll-behavior-x:none too.

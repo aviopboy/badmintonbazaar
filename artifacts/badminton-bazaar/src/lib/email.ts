@@ -1,26 +1,52 @@
-import emailjs from "@emailjs/browser";
-
 /**
- * EmailJS configuration — set these env vars in the Replit Secrets panel:
- *   VITE_EMAILJS_SERVICE_ID          — EmailJS "Service ID" (e.g. service_xxxxxxx)
- *   VITE_EMAILJS_TEMPLATE_ID         — EmailJS template for NEW ORDER notifications to founder
- *   VITE_EMAILJS_PUBLIC_KEY          — EmailJS "Public Key" from Account → General
- *   VITE_EMAILJS_CUSTOMER_TEMPLATE_ID — (optional) separate template for customer status emails
- *                                        Falls back to VITE_EMAILJS_TEMPLATE_ID if not set.
+ * Email via formsubmit.co — no API keys required.
  *
- * Both templates should support a {{to_email}} variable as the recipient.
- * In the EmailJS template editor, set "To Email" field to {{to_email}}.
+ * Set one env var in the Replit Secrets panel:
+ *   VITE_FOUNDER_EMAIL  — the email address that receives order notifications
+ *                         (e.g. yourname@gmail.com).
  *
- * If any of the required three are missing the function logs a warning and skips
- * the send, so the app still works even before EmailJS is fully configured.
+ * First-time setup: formsubmit.co sends a one-time activation email to
+ * VITE_FOUNDER_EMAIL on the very first order. Click the link in that email,
+ * then all future orders and status updates are delivered automatically.
+ *
+ * Customer status emails (approved / rejected) are CC'd to the customer so
+ * both you and the customer receive the update — and only your email needs
+ * the one-time activation.
  */
-const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID ?? "";
-const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? "";
-const CUSTOMER_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_CUSTOMER_TEMPLATE_ID || TEMPLATE_ID;
-const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY ?? "";
+const FOUNDER_EMAIL = import.meta.env.VITE_FOUNDER_EMAIL ?? "";
+
+function money(n: number) {
+  return "₹" + n.toLocaleString("en-IN");
+}
+
+async function formPost(
+  toEmail: string,
+  payload: Record<string, string>
+): Promise<void> {
+  const res = await fetch(
+    `https://formsubmit.co/ajax/${encodeURIComponent(toEmail)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        _captcha: "false",
+        _template: "table",
+        ...payload,
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`formsubmit.co HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.success !== "true") throw new Error(`formsubmit.co: ${data.message}`);
+}
+
+/* ─── Types ─────────────────────────────────────────────────── */
 
 export interface OrderEmailParams {
-  founderEmail: string;
+  founderEmail: string; // kept for interface compatibility — uses VITE_FOUNDER_EMAIL
   orderId: string;
   customerName: string;
   customerEmail: string;
@@ -28,7 +54,7 @@ export interface OrderEmailParams {
   customerAddress: string;
   additionalContact: string;
   paymentReference: string;
-  /** base64 data-URL of the uploaded payment screenshot */
+  /** base64 data-URL — NOT sent (formsubmit.co doesn't support inline images) */
   paymentProof: string;
   items: { name: string; brand: string; price: number; quantity: number }[];
   total: number;
@@ -46,106 +72,83 @@ export interface StatusEmailParams {
   total: number;
 }
 
-function money(n: number) {
-  return "₹" + n.toLocaleString("en-IN");
-}
+/* ─── New-order notification → founder ──────────────────────── */
 
-/** Send new-order notification to the founder/admin. */
 export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
-  if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
+  const target = FOUNDER_EMAIL || params.founderEmail;
+  if (!target) {
     console.warn(
-      "[Badminton Bazaar] EmailJS not configured — founder email skipped.\n" +
-        "Set VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY."
+      "[Badminton Bazaar] VITE_FOUNDER_EMAIL not set — order email skipped.\n" +
+        "Add it in the Replit Secrets panel."
     );
     return;
   }
-
-  const itemsHtml = params.items
-    .map(
-      (item) =>
-        `• ${item.brand} ${item.name} × ${item.quantity}  —  ${money(item.price * item.quantity)}`
-    )
-    .join("\n");
 
   const orderDate = new Date(params.createdAt).toLocaleString("en-IN", {
     dateStyle: "long",
     timeStyle: "short",
   });
 
-  await emailjs.send(
-    SERVICE_ID,
-    TEMPLATE_ID,
-    {
-      /* ── Recipient ── */
-      to_email: params.founderEmail,
+  const itemLines = params.items
+    .map(
+      (i) =>
+        `${i.brand} ${i.name} × ${i.quantity}  →  ${money(i.price * i.quantity)}`
+    )
+    .join("\n");
 
-      /* ── Invoice header ── */
-      order_id: params.orderId,
-      order_date: orderDate,
+  await formPost(target, {
+    _subject: `🛒 New Order #${params.orderId} — Badminton Bazaar`,
+    _replyto: params.customerEmail,
 
-      /* ── Customer details ── */
-      customer_name: params.customerName,
-      customer_email: params.customerEmail,
-      customer_phone: params.customerPhone,
-      customer_address: params.customerAddress,
-      additional_contact: params.additionalContact || "—",
-
-      /* ── Payment ── */
-      payment_reference: params.paymentReference,
-      order_total: money(params.total),
-
-      /* ── Order lines ── */
-      items_list: itemsHtml,
-
-      /* ── Proof image (base64 data-URL — embed as <img src="{{payment_proof}}"> in template) ── */
-      payment_proof: params.paymentProof,
-    },
-    PUBLIC_KEY
-  );
+    "Order ID": params.orderId,
+    "Order Date": orderDate,
+    "Customer Name": params.customerName,
+    "Customer Email": params.customerEmail,
+    "Phone": params.customerPhone,
+    "Address": params.customerAddress,
+    "Additional Contact": params.additionalContact || "—",
+    "Payment Reference": params.paymentReference,
+    "Items Ordered": itemLines,
+    "Order Total": money(params.total),
+    "Status": "PENDING — please review in your admin panel",
+  });
 }
 
-/**
- * Send order status update (approved / rejected) directly to the customer.
- * Uses VITE_EMAILJS_CUSTOMER_TEMPLATE_ID (falls back to VITE_EMAILJS_TEMPLATE_ID).
- *
- * Required template variables:
- *   {{to_email}}      — customer's email (set as "To Email" in the template)
- *   {{customer_name}} — customer's name
- *   {{order_id}}      — invoice number
- *   {{order_status}}  — "APPROVED ✓" or "REJECTED"
- *   {{status_message}}— delivery date (approved) or rejection reason (rejected)
- *   {{items_list}}    — line-by-line order items
- *   {{order_total}}   — formatted total
- */
+/* ─── Status update (approved / rejected) → founder + customer CC ── */
+
 export async function sendStatusEmail(params: StatusEmailParams): Promise<void> {
-  if (!SERVICE_ID || !CUSTOMER_TEMPLATE_ID || !PUBLIC_KEY) {
+  const target = FOUNDER_EMAIL;
+  if (!target) {
     console.warn(
-      "[Badminton Bazaar] EmailJS not configured — customer status email skipped."
+      "[Badminton Bazaar] VITE_FOUNDER_EMAIL not set — status email skipped."
     );
     return;
   }
 
-  const itemsText = params.items
+  const statusLabel =
+    params.status === "approved" ? "✅ APPROVED" : "❌ REJECTED";
+
+  const itemLines = params.items
     .map(
-      (item) =>
-        `• ${item.brand} ${item.name} × ${item.quantity} — ${money(item.price * item.quantity)}`
+      (i) =>
+        `${i.brand} ${i.name} × ${i.quantity}  →  ${money(i.price * i.quantity)}`
     )
     .join("\n");
 
-  const statusLabel = params.status === "approved" ? "APPROVED ✓" : "REJECTED ✗";
+  const messageLabel =
+    params.status === "approved" ? "Estimated Delivery" : "Reason";
 
-  await emailjs.send(
-    SERVICE_ID,
-    CUSTOMER_TEMPLATE_ID,
-    {
-      to_email: params.customerEmail,
-      customer_name: params.customerName,
-      order_id: params.orderId,
-      order_status: statusLabel,
-      status_message: params.statusMessage,
-      items_list: itemsText,
-      order_total: money(params.total),
-    },
-    PUBLIC_KEY
-  );
+  await formPost(target, {
+    _subject: `Order #${params.orderId} ${statusLabel} — Badminton Bazaar`,
+    // CC the customer so they receive the same email
+    _cc: params.customerEmail,
+
+    "Order Status": statusLabel,
+    "Order ID": params.orderId,
+    "Customer Name": params.customerName,
+    "Customer Email": params.customerEmail,
+    [messageLabel]: params.statusMessage,
+    "Items": itemLines,
+    "Order Total": money(params.total),
+  });
 }
