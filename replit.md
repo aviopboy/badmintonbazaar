@@ -1,45 +1,46 @@
-# [Project name]
+# Badminton Bazaar
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A dark, sporty badminton gear storefront inspired by racketrush.in — with catalog, accounts, cart, and a full admin panel. Catalog preferences remain browser-local (localStorage), while orders are synced through the shared PostgreSQL-backed API so account history is available across devices. Email notifications are sent through formsubmit.co when a customer submits payment proof at checkout.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Workflow: **Badminton Bazaar** — `PORT=26050 BASE_PATH=/ pnpm --filter @workspace/badminton-bazaar run dev`
+- Workflow: **API Server** — `PORT=8080 pnpm --filter @workspace/api-server run dev`
+- `pnpm --filter @workspace/badminton-bazaar run typecheck` — typecheck the storefront
+- `pnpm --filter @workspace/api-server run typecheck` — typecheck the API
+- `pnpm run typecheck` — full workspace typecheck
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- pnpm workspaces, Node.js 20, TypeScript 5.9
+- React + Vite, Tailwind CSS, lucide-react
+- Browser-local state (localStorage) for catalog/preferences, plus an Express/PostgreSQL order service for shared account history
+- Drizzle ORM with `@workspace/db` shared library
+- No Shopify or other hosted commerce platform
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/badminton-bazaar/src/App.tsx` — entire app: storefront, auth, cart, account, admin
+- `artifacts/badminton-bazaar/src/index.css` — dark sporty theme
+- `artifacts/api-server/src/routes/` — API routes (orders, users, health)
+- `lib/db/` — shared Drizzle schema + PostgreSQL connection
+- `lib/api-spec/` — OpenAPI spec
+- `lib/api-zod/` — generated Zod validators
+- `lib/api-client-react/` — generated React Query hooks
 
-## Architecture decisions
+## Environment Variables
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- `DATABASE_URL` — PostgreSQL connection string (required for API server; already set)
+- `SESSION_SECRET` — session signing secret (already set)
+- `VITE_FOUNDER_EMAIL` — founder email for order notifications via formsubmit.co (optional; checkout works without it but skips email)
 
-## Product
+## Accounts
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Admin access is intentionally not displayed in the public storefront
+- Any registered user email + password they chose at sign-up
 
 ## User preferences
 
-- Push to GitHub after every fix.
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Keep the brand name **Badminton Bazaar** and logo letter **B**
+- Do not use Shopify or any other hosted commerce platform
+- Push to GitHub after every fix
