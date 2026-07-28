@@ -196,7 +196,7 @@ function App() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authError, setAuthError] = useState("");
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
-  const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
+  const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", "aviiboi77@gmail.com"));
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [ordersRefreshing, setOrdersRefreshing] = useState(false);

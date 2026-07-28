@@ -13,7 +13,7 @@
  * both you and the customer receive the update — and only your email needs
  * the one-time activation.
  */
-const FOUNDER_EMAIL = import.meta.env.VITE_FOUNDER_EMAIL ?? "";
+const FOUNDER_EMAIL = import.meta.env.VITE_FOUNDER_EMAIL || "aviiboi77@gmail.com";
 
 function money(n: number) {
   return "₹" + n.toLocaleString("en-IN");
@@ -75,7 +75,7 @@ export interface StatusEmailParams {
 /* ─── New-order notification → founder ──────────────────────── */
 
 export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
-  const target = params.founderEmail || FOUNDER_EMAIL;
+  const target = FOUNDER_EMAIL || params.founderEmail;
   if (!target) {
     console.warn(
       "[Badminton Bazaar] VITE_FOUNDER_EMAIL not set — order email skipped.\n" +
