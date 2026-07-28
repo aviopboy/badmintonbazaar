@@ -1,0 +1,1 @@
+- [Deployment Architecture](deployment-architecture.md) — Vercel API + Cloudflare frontend + Neon DB; schema push and env var rules for each layer.

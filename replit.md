@@ -28,11 +28,26 @@ A dark, sporty badminton gear storefront inspired by racketrush.in — with cata
 - `lib/api-zod/` — generated Zod validators
 - `lib/api-client-react/` — generated React Query hooks
 
+## Deployment Architecture
+
+- **Replit** — development environment (this workspace)
+- **Vercel Project 1** — API server: https://badmintonbazaar-api-server.vercel.app
+  - `DATABASE_URL` set to Neon PostgreSQL in Vercel env vars
+- **Vercel Project 2** — Frontend: https://badmintonbazaar-api-frontend.vercel.app
+  - `VITE_API_URL` set to `https://badmintonbazaar-api-server.vercel.app` in Vercel env vars
+- **Cloudflare Pages** — production storefront on custom domain: https://badmintonbazaar.shop
+- **Database** — Neon PostgreSQL (shared between Vercel and Replit dev via `NEON_DATABASE_URL` secret)
+
+When schema changes are needed: push the schema to Neon using `NEON_DATABASE_URL` (already in Replit Secrets), and notify the user to redeploy Vercel Project 1 to pick up the changes.
+
+When frontend code changes ship: user deploys via Cloudflare Pages / Vercel Project 2. VITE_ variables are baked in at build time — any new env var additions require a redeploy.
+
 ## Environment Variables
 
-- `DATABASE_URL` — PostgreSQL connection string (required for API server; already set)
+- `DATABASE_URL` — Replit local PostgreSQL (used in dev)
+- `NEON_DATABASE_URL` — Neon PostgreSQL (production database; in Replit Secrets)
 - `SESSION_SECRET` — session signing secret (already set)
-- `VITE_FOUNDER_EMAIL` — founder email for order notifications via formsubmit.co (optional; checkout works without it but skips email)
+- `VITE_FOUNDER_EMAIL` — founder email for order notifications via formsubmit.co (set in Vercel Project 2 env vars; optional but needed for checkout emails)
 
 ## Accounts
 
