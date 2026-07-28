@@ -54,7 +54,8 @@ router.get("/users", async (_req, res): Promise<void> => {
     res.json(rows.map(toApiUser));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: message });
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : undefined;
+    res.status(500).json({ error: message, cause, DATABASE_URL_SET: !!process.env.DATABASE_URL });
   }
 });
 
