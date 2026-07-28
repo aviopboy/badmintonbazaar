@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @workspace/badminton-bazaar run build",
+  "outputDirectory": "artifacts/badminton-bazaar/dist/public",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
