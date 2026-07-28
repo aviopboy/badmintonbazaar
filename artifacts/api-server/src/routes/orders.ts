@@ -90,21 +90,32 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [updated] = await db
-    .update(ordersTable)
-    .set({
-      status: parsed.data.status,
-      reviewMessage: parsed.data.reviewMessage,
-    })
-    .where(eq(ordersTable.id, params.data.id))
-    .returning();
+  try {
+    const [updated] = await db
+      .update(ordersTable)
+      .set({
+        status: parsed.data.status,
+        reviewMessage: parsed.data.reviewMessage,
+      })
+      .where(eq(ordersTable.id, params.data.id))
+      .returning();
 
-  if (!updated) {
-    res.status(404).json({ error: "Order not found" });
-    return;
+    if (!updated) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    res.json(UpdateOrderResponse.parse(toApiOrder(updated)));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code = (err as Record<string, unknown>)?.code;
+    res.status(500).json({
+      error: message,
+      code,
+      DATABASE_URL_SET: !!process.env.DATABASE_URL,
+      NODE_ENV: process.env.NODE_ENV,
+    });
   }
-
-  res.json(UpdateOrderResponse.parse(toApiOrder(updated)));
 });
 
 router.delete("/orders/:id", async (req, res): Promise<void> => {
