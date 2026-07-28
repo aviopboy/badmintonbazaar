@@ -1444,11 +1444,10 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
   const isPending = order.status === "pending";
 
   const confirmApprove = async () => {
-    if (!deliveryDate.trim()) return;
+    if (!deliveryDate.trim()) { toast("Please enter a message for the customer before approving.", true); return; }
     setSending(true);
-    const msg = `Your payment has been approved! Your order is being prepared for dispatch. Estimated delivery: ${deliveryDate}.`;
     try {
-      await updateOrder(order.id, "approved", msg);
+      await updateOrder(order.id, "approved", deliveryDate.trim());
     } catch {
       toast(`${order.id} could not be approved. Please try again.`, true);
       setSending(false);
@@ -1460,7 +1459,7 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
         customerName: order.customerName,
         orderId: order.id,
         status: "approved",
-        statusMessage: `Your payment has been verified and your order is confirmed.\nEstimated delivery: ${deliveryDate}`,
+        statusMessage: deliveryDate.trim(),
         items: order.items,
         total: order.total,
       });
@@ -1473,8 +1472,9 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
   };
 
   const confirmReject = async () => {
+    if (!rejectionReason.trim()) { toast("Please enter a reason before rejecting.", true); return; }
     setSending(true);
-    const reason = rejectionReason.trim() || "We could not verify your payment. Please contact us so we can help complete your order.";
+    const reason = rejectionReason.trim();
     try {
       await updateOrder(order.id, "rejected", reason);
     } catch {
@@ -1545,15 +1545,15 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
       {isPending && step === "approving" && (
         <div className="review-actions">
           <p style={{ fontSize: 13, color: "rgb(var(--neon-cyan))", marginBottom: 6 }}>
-            Enter the estimated delivery date — this will be emailed to the customer.
+            Enter a message for the customer — this will be emailed to them.
           </p>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor={`delivery-date-${order.id}`}>Estimated Delivery Date</label>
+            <label htmlFor={`delivery-date-${order.id}`}>Message to Customer</label>
             <input
               id={`delivery-date-${order.id}`}
               value={deliveryDate}
               onChange={(e) => setDeliveryDate(e.target.value)}
-              placeholder="e.g. 3–5 business days, or 20 July 2026"
+              placeholder="Write your approval message here…"
               autoFocus
             />
           </div>
