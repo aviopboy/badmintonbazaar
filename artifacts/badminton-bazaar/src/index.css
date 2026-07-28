@@ -150,8 +150,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     background: rgb(var(--ink-soft));
     border-top: 1px solid rgb(var(--line));
     border-bottom: 1px solid rgb(var(--line));
-    animation: drop-in .18s ease;
-    /* ensure it stays within header which is sticky */
+    /* animation handled by framer-motion */
     position: relative;
     z-index: 49;
     max-height: 80dvh;
@@ -516,13 +515,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 60;
   background: rgb(0 0 0 / .75); display: grid; place-items: center;
-  padding: 20px; animation: fade-in .18s ease;
+  padding: 20px;
 }
 .modal {
   position: relative; width: min(540px, 100%); max-height: min(90dvh, 900px);
   overflow-y: auto; background: rgb(var(--ink-soft));
   color: rgb(var(--paper-bright)); box-shadow: 0 24px 80px rgb(0 0 0 / .6);
-  animation: rise-in .22s ease;
 }
 .modal-wide { width: min(980px, 100%); }
 .editor-modal { max-height: min(94dvh, 1000px); display: flex; flex-direction: column; }
@@ -567,7 +565,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .drawer {
   position: fixed; inset: 0 0 0 auto; width: min(440px, 100%); z-index: 65;
   background: rgb(var(--ink-soft)); display: flex; flex-direction: column;
-  box-shadow: -20px 0 60px rgb(0 0 0 / .5); animation: slide-in .22s ease;
+  box-shadow: -20px 0 60px rgb(0 0 0 / .5);
 }
 .drawer-header {
   padding: 20px 22px; border-bottom: 1px solid rgb(var(--line));
@@ -925,9 +923,35 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: rgb(var(--ink-soft)); border: 1px solid rgb(var(--line));
   border-left: 4px solid rgb(var(--lime)); color: rgb(var(--paper-bright));
   padding: 13px 16px; font-size: 13px; font-weight: 600;
-  box-shadow: 0 8px 30px rgb(0 0 0 / .5); animation: rise-in .2s ease;
+  box-shadow: 0 8px 30px rgb(0 0 0 / .5);
 }
 .toast.error { border-left-color: rgb(var(--danger)); }
+
+/* ─── Button press / active feedback ───────────────────────── */
+.btn-primary:active:not(:disabled) { transform: scale(0.96); }
+.btn-hero:active { transform: scale(0.96) translateY(0) !important; }
+.btn-add-cart:active { transform: scale(0.95); }
+.btn-ghost:active { transform: scale(0.96); }
+.btn-ghost-sm:active { opacity: 0.65; }
+.btn-danger:active { transform: scale(0.96); }
+.icon-btn:active { transform: scale(0.86); }
+.cat-chip:active { transform: scale(0.93); }
+.pill:active { transform: scale(0.93); }
+.wishlist-btn:active { transform: scale(0.78); }
+.btn-icon-outline:active { transform: scale(0.9); }
+.mobile-cat-btn:active { transform: scale(0.95); }
+.btn-table-action:active { transform: scale(0.88); }
+.btn-small:active { transform: scale(0.94); }
+
+/* Snappier base transitions so hover feels alive */
+.btn-primary { transition: background .12s, transform .1s; }
+.btn-hero { transition: opacity .12s, transform .1s; }
+.btn-add-cart { transition: background .12s, color .12s, border-color .12s, transform .1s; }
+.btn-ghost { transition: color .12s, border-color .12s, transform .1s; }
+.icon-btn { transition: color .12s, background .12s, transform .1s; }
+.cat-chip { transition: all .12s; }
+.pill { transition: all .12s; }
+.wishlist-btn { transition: color .12s, background .12s, transform .1s; }
 
 /* ─── Utility animations ────────────────────────────────────── */
 .spin { animation: spin 1s linear infinite; }
@@ -1003,7 +1027,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     width: 100%; max-width: 100%;
     max-height: 94dvh;
     border-radius: 0;
-    animation: rise-in .22s ease;
   }
   .modal-wide { width: 100%; }
   .modal-form { padding: 16px 16px 24px; }
@@ -1020,7 +1043,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .modal-header-block h2 { font-size: 28px; }
 
   /* Cart drawer — full width, full height */
-  .drawer { width: 100%; inset: 0; animation: rise-in .22s ease; }
+  .drawer { width: 100%; inset: 0; }
   .drawer-header { padding: 16px 16px; }
   .drawer-body { padding: 8px 16px; }
   .drawer-footer { padding: 14px 16px 20px; }

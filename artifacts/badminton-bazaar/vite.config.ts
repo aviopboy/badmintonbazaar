@@ -41,7 +41,7 @@ export default defineConfig({
         'attached_assets',
       ),
     },
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'framer-motion'],
   },
   root: path.resolve(import.meta.dirname),
   build: {

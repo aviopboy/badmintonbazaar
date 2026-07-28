@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight, BadgeCheck, Check, ChevronDown, CreditCard, Edit3, Heart,
   LayoutDashboard, Loader2, Menu, Minus, Package, Play, Plus, Search,
@@ -675,15 +676,21 @@ function App() {
 
       <SiteFooter setView={setView} setCategory={setCategory} />
 
-      {modal === "product" && selectedProduct && (
-        <ProductModal product={selectedProduct} close={() => setModal(null)} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />
-      )}
-      {modal === "cart" && (
-        <CartDrawer cart={cart} products={products} close={() => setModal(null)} updateQty={updateQty} openProduct={openProduct} total={cartTotal} requireAuth={requireAuth} setModal={setModal} toast={toast} />
-      )}
-      {modal === "auth" && (
-        <AuthModal mode={authMode} setMode={(m) => { setAuthMode(m); setAuthError(""); }} close={() => setModal(null)} submit={onAuth} error={authError} />
-      )}
+      <AnimatePresence>
+        {modal === "product" && selectedProduct && (
+          <ProductModal key="product-modal" product={selectedProduct} close={() => setModal(null)} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {modal === "cart" && (
+          <CartDrawer key="cart-drawer" cart={cart} products={products} close={() => setModal(null)} updateQty={updateQty} openProduct={openProduct} total={cartTotal} requireAuth={requireAuth} setModal={setModal} toast={toast} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {modal === "auth" && (
+          <AuthModal key="auth-modal" mode={authMode} setMode={(m) => { setAuthMode(m); setAuthError(""); }} close={() => setModal(null)} submit={onAuth} error={authError} />
+        )}
+      </AnimatePresence>
       {modal === "checkout" && (
         <CheckoutModal
           close={() => setModal(null)}
@@ -704,11 +711,22 @@ function App() {
         <ProductEditor product={editingProduct} close={() => setEditingProduct(null)} save={saveProduct} />
       )}
 
-      {toasts.length > 0 && (
-        <div className="toast-stack" aria-live="polite">
-          {toasts.map((t) => <div className={`toast ${t.error ? "error" : ""}`} key={t.id}>{t.message}</div>)}
-        </div>
-      )}
+      <div className="toast-stack" aria-live="polite">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              className={`toast ${t.error ? "error" : ""}`}
+              initial={{ opacity: 0, y: 20, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.95, transition: { duration: 0.15 } }}
+              transition={{ type: "spring", stiffness: 500, damping: 32 }}
+            >
+              {t.message}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -798,8 +816,17 @@ function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, vi
       </nav>
 
       {/* Mobile navigation panel */}
+      <AnimatePresence>
       {mobileMenuOpen && (
-        <div className="mobile-nav" role="navigation" aria-label="Mobile menu">
+        <motion.div
+          className="mobile-nav"
+          role="navigation"
+          aria-label="Mobile menu"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+        >
           {currentUser?.admin && (
             <button
               className={`mobile-admin-link ${view === "admin" ? "active" : ""}`}
@@ -841,8 +868,9 @@ function TopNav({ currentUser, cartCount, query, setQuery, setModal, setView, vi
               {currentUser ? `My Account (${currentUser.name})` : "Sign In / Register"}
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </header>
   );
 }
@@ -1032,8 +1060,8 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
   const embedUrl = product.showcase && isYouTubeUrl(product.showcase) ? youtubeEmbedUrl(product.showcase) : null;
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <section className="modal modal-wide" role="dialog" aria-modal="true" data-testid="modal-product-detail">
+    <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <motion.section className="modal modal-wide" role="dialog" aria-modal="true" data-testid="modal-product-detail" initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.97 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
         <button className="modal-close" onClick={close} data-testid="button-close-product"><X size={22} /></button>
         <div className="modal-product-layout">
           <div className="modal-product-img">
@@ -1080,8 +1108,8 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
             <p className="modal-ship-note"><Truck size={13} /> Free delivery on orders above ₹2,500</p>
           </div>
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }
 
@@ -1092,8 +1120,8 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
   setModal: (v: Modal) => void; toast: (msg: string, err?: boolean) => void;
 }) {
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <aside className="drawer" aria-label="Cart" data-testid="drawer-cart">
+    <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <motion.aside className="drawer" aria-label="Cart" data-testid="drawer-cart" initial={{ opacity: 0, x: 48 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 48 }} transition={{ type: "spring", stiffness: 420, damping: 32 }}>
         <div className="drawer-header">
           <h2>Your Bag <span className="cart-count-text">({cart.reduce((s, l) => s + l.quantity, 0)})</span></h2>
           <button className="modal-close" onClick={close} data-testid="button-close-cart"><X size={20} /></button>
@@ -1139,8 +1167,8 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
             <p className="demo-note">Pay securely via UPI on the next step.</p>
           </div>
         )}
-      </aside>
-    </div>
+      </motion.aside>
+    </motion.div>
   );
 }
 
@@ -1155,8 +1183,8 @@ function AuthModal({ mode, setMode, close, submit, error }: {
   const [showPw, setShowPw] = useState(false);
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <section className="modal" role="dialog" aria-modal="true" data-testid="modal-auth">
+    <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <motion.section className="modal" role="dialog" aria-modal="true" data-testid="modal-auth" initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.97 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
         <button className="modal-close" onClick={close} data-testid="button-close-auth"><X size={20} /></button>
         <div className="modal-auth-brand"><span className="brand-mark sm">B</span><span>Badminton Bazaar</span></div>
         <div className="modal-tabs">
@@ -1196,8 +1224,8 @@ function AuthModal({ mode, setMode, close, submit, error }: {
             </p>
           )}
         </form>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }
 

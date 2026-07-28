@@ -6,10 +6,11 @@ import App from './App';
 import './index.css';
 
 // VITE_API_URL should be set in your Cloudflare Pages environment variables.
-// Falls back to the production Vercel API server if the variable is not provided.
+// In dev (Replit) use relative paths so the built-in proxy routes /api/* to the
+// local API server. In production fall back to the Vercel deployment.
 const apiUrl =
   (import.meta.env.VITE_API_URL as string | undefined) ||
-  'https://badmintonbazaar-api-server.vercel.app';
+  (import.meta.env.DEV ? '' : 'https://badmintonbazaar-api-server.vercel.app');
 
 setBaseUrl(apiUrl);
 
