@@ -45,9 +45,17 @@ When frontend code changes ship: user deploys via Cloudflare Pages / Vercel Proj
 ## Environment Variables
 
 - `DATABASE_URL` — Replit local PostgreSQL (used in dev)
-- `NEON_DATABASE_URL` — Neon PostgreSQL (production database; in Replit Secrets)
+- `NEON_DATABASE_URL` — Neon PostgreSQL (production database; must be in Replit Secrets — used to push schema changes to Neon)
 - `SESSION_SECRET` — session signing secret (already set)
 - `VITE_FOUNDER_EMAIL` — founder email for order notifications via formsubmit.co (set in Vercel Project 2 env vars; optional but needed for checkout emails)
+
+## Products (catalog)
+
+Products are now stored in the shared Neon PostgreSQL database (`bb_products` table), not just browser localStorage. When admin adds/edits/deletes a product in the admin panel, it is saved to the DB and immediately visible to all users across all devices.
+
+- On first admin login after migration, any products in the admin's browser localStorage are automatically uploaded to the DB (one-time sync).
+- The `bb_products` schema has been pushed to the local dev DB. **NEON_DATABASE_URL must be set in Replit Secrets so the same schema can be pushed to production Neon.**
+- To push schema to Neon: `DATABASE_URL=$NEON_DATABASE_URL pnpm --filter @workspace/db run push`
 
 ## Accounts
 

@@ -10,7 +10,7 @@ import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
 import { sendOrderEmail, sendStatusEmail } from "./lib/email";
-import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder, listUsers as listApiUsers, createUser as createApiUser, patchUser as patchApiUser, deleteUser as deleteApiUser } from "@workspace/api-client-react";
+import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder, listUsers as listApiUsers, createUser as createApiUser, patchUser as patchApiUser, deleteUser as deleteApiUser, listProducts as listApiProducts, createProduct as createApiProduct, updateProduct as updateApiProduct, deleteProduct as deleteApiProduct } from "@workspace/api-client-react";
 import { useLocation, Router } from "wouter";
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -203,6 +203,7 @@ function App() {
   const syncOrdersFnRef = useRef<(() => Promise<void>) | null>(null);
   const ordersRefreshingRef = useRef(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const productsSyncedRef = useRef(false);
 
   const clearCart = () => setCart([]);
 
@@ -263,6 +264,44 @@ function App() {
       setOrdersRefreshing(false);
     }
   }, []);
+
+  // ── All users: load product catalog from shared DB on mount ──
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const apiProducts = await listApiProducts();
+        if (!cancelled) setProducts(apiProducts as Product[]);
+      } catch {
+        // API unavailable — keep localStorage products as fallback
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Admin: one-time migration of localStorage products → DB ──
+  useEffect(() => {
+    if (!currentUser?.admin || productsSyncedRef.current) return;
+    productsSyncedRef.current = true;
+    (async () => {
+      try {
+        const apiProducts = await listApiProducts();
+        if (apiProducts.length === 0) {
+          const localProds = storage.get<Product[]>("bb-products-v4", []);
+          if (localProds.length > 0) {
+            await Promise.allSettled(localProds.map((p) => createApiProduct({ ...p, tags: p.tags ?? [], featured: p.featured ?? false })));
+            const refreshed = await listApiProducts();
+            setProducts(refreshed as Product[]);
+            toast("Catalog synced to shared database.");
+          }
+        }
+      } catch {
+        // ignore — local products stay visible
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.admin]);
 
   // ── Admin: sync user list from shared DB ──────────────────────
   useEffect(() => {
@@ -352,16 +391,28 @@ function App() {
     setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
   };
 
-  const saveProduct = (p: Product) => {
-    setProducts((prev) => prev.some((x) => x.id === p.id) ? prev.map((x) => x.id === p.id ? p : x) : [...prev, p]);
+  const saveProduct = async (p: Product) => {
+    const isUpdate = products.some((x) => x.id === p.id);
+    setProducts((prev) => isUpdate ? prev.map((x) => x.id === p.id ? p : x) : [...prev, p]);
     setEditingProduct(null);
-    toast(products.some((x) => x.id === p.id) ? "Product updated." : "Product added to catalog.");
+    toast(isUpdate ? "Product updated." : "Product added to catalog.");
+    try {
+      if (isUpdate) await updateApiProduct(p.id, { ...p, tags: p.tags ?? [], featured: p.featured ?? false });
+      else await createApiProduct({ ...p, tags: p.tags ?? [], featured: p.featured ?? false });
+    } catch {
+      toast("Saved locally — failed to sync to shared catalog. Check your connection.", true);
+    }
   };
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string) => {
     if (window.confirm("Remove this product from the catalog?")) {
       setProducts((prev) => prev.filter((p) => p.id !== id));
       toast("Product removed.");
+      try {
+        await deleteApiProduct(id);
+      } catch {
+        toast("Removed locally — failed to sync deletion. Reload may restore it.", true);
+      }
     }
   };
 
@@ -1217,18 +1268,26 @@ function AddUserModal({ close, users, setUsers, toast }: {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast("Name is required.", true); return; }
     if (!email.includes("@")) { toast("Enter a valid email.", true); return; }
     if (password.length < 4) { toast("Password needs at least 4 characters.", true); return; }
     if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) { toast("Email already in use.", true); return; }
     const user: User = { id: `u-${Date.now()}`, name: name.trim(), email: email.trim().toLowerCase(), password, admin: isAdmin, joined: new Date().toLocaleDateString("en-IN") };
-    setUsers([...users, user]);
-    createApiUser(user).catch(() => {});
-    toast(`User "${user.name}" added.`);
-    close();
+    setIsSaving(true);
+    try {
+      await createApiUser(user);
+      setUsers([...users, user]);
+      toast(`User "${user.name}" added.`);
+      close();
+    } catch {
+      toast("Failed to save user to database. Please try again.", true);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -1244,7 +1303,9 @@ function AddUserModal({ close, users, setUsers, toast }: {
             <input id="nu-admin" type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} />
             <label htmlFor="nu-admin">Grant Admin Access</label>
           </div>
-          <button className="btn-primary btn-full" type="submit">Add User</button>
+          <button className="btn-primary btn-full" type="submit" disabled={isSaving}>
+            {isSaving ? "Saving…" : "Add User"}
+          </button>
         </form>
       </section>
     </div>
