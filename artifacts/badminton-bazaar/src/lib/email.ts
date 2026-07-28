@@ -75,7 +75,7 @@ export interface StatusEmailParams {
 /* ─── New-order notification → founder ──────────────────────── */
 
 export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
-  const target = FOUNDER_EMAIL || params.founderEmail;
+  const target = params.founderEmail || FOUNDER_EMAIL;
   if (!target) {
     console.warn(
       "[Badminton Bazaar] VITE_FOUNDER_EMAIL not set — order email skipped.\n" +
