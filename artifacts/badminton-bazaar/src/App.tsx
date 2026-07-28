@@ -10,7 +10,7 @@ import "./index.css";
 import logoImg from "@assets/image_1785068893314.png";
 import qrImg from "@assets/image_1785068900913.png";
 import { sendOrderEmail, sendStatusEmail } from "./lib/email";
-import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder, listUsers as listApiUsers, createUser as createApiUser, patchUser as patchApiUser, deleteUser as deleteApiUser, listProducts as listApiProducts, createProduct as createApiProduct, updateProduct as updateApiProduct, deleteProduct as deleteApiProduct } from "@workspace/api-client-react";
+import { createOrder as createSharedOrder, listOrders, updateOrder as updateSharedOrder, deleteOrder as deleteSharedOrder, listUsers as listApiUsers, createUser as createApiUser, patchUser as patchApiUser, deleteUser as deleteApiUser, listProducts as listApiProducts, createProduct as createApiProduct, updateProduct as updateApiProduct, deleteProduct as deleteApiProduct, getSetting, putSetting } from "@workspace/api-client-react";
 import { useLocation, Router } from "wouter";
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -198,6 +198,12 @@ function App() {
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
   const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
   const [orders, setOrders] = useState<Order[]>([]);
+  // Load founder email from DB on mount so it's consistent across all browsers/devices
+  useEffect(() => {
+    getSetting("founder-email").then((val) => {
+      if (val) { setFounderEmail(val); storage.set("bb-founder-email", val); }
+    }).catch(() => {});
+  }, []);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [ordersRefreshing, setOrdersRefreshing] = useState(false);
   const syncOrdersFnRef = useRef<(() => Promise<void>) | null>(null);
@@ -1785,7 +1791,7 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
               <h3>Founder Contact Email</h3>
               <p className="settings-desc">This is the email address shown to customers as the payment review contact. Email sending is not connected on the free plan, so use the contact buttons in Payment Review.</p>
               <div className="field"><label htmlFor="founder-email">Founder Email</label><input id="founder-email" type="email" value={founderEmailDraft} onChange={(e) => setFounderEmailDraft(e.target.value)} placeholder="founder@example.com" data-testid="input-founder-email" /></div>
-              <div className="settings-actions"><button className="btn-primary" onClick={() => { if (!founderEmailDraft.includes("@")) { toast("Enter a valid founder email.", true); return; } setFounderEmail(founderEmailDraft.trim().toLowerCase()); toast("Founder email updated."); }}>Save Founder Email</button></div>
+              <div className="settings-actions"><button className="btn-primary" onClick={() => { if (!founderEmailDraft.includes("@")) { toast("Enter a valid founder email.", true); return; } const e = founderEmailDraft.trim().toLowerCase(); setFounderEmail(e); putSetting("founder-email", e).catch(() => {}); toast("Founder email updated."); }}>Save Founder Email</button></div>
             </div>
             <div className="settings-section">
               <h3>Hero Background Image</h3>
