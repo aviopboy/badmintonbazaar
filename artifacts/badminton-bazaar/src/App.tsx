@@ -197,15 +197,7 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [heroBackground, setHeroBackground] = useState(() => storage.get("bb-hero-bg", ""));
   const [founderEmail, setFounderEmail] = useState(() => storage.get("bb-founder-email", seedUsers[0].email));
-  const founderEmailSavedRef = useRef(false); // true once admin manually saves in this session
   const [orders, setOrders] = useState<Order[]>([]);
-  // Load founder email from DB on mount so it stays consistent across all browsers/devices.
-  // Only apply the DB value if the admin hasn't already saved a new one in this session.
-  useEffect(() => {
-    getSetting("founder-email").then((val) => {
-      if (val && !founderEmailSavedRef.current) { setFounderEmail(val); storage.set("bb-founder-email", val); }
-    }).catch(() => {});
-  }, []);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [ordersRefreshing, setOrdersRefreshing] = useState(false);
   const syncOrdersFnRef = useRef<(() => Promise<void>) | null>(null);
@@ -394,10 +386,6 @@ function App() {
     }
   };
 
-  const saveFounderEmail = (email: string) => {
-    founderEmailSavedRef.current = true;
-    setFounderEmail(email);
-  };
 
   const updateUser = (updated: User) => {
     setCurrentUser(updated);
@@ -513,7 +501,7 @@ function App() {
       {view === "admin" && currentUser?.admin && (
         <Admin products={products} users={users} setUsers={setUsers}
           heroBackground={heroBackground} setHeroBackground={setHeroBackground}
-          founderEmail={founderEmail} setFounderEmail={saveFounderEmail}
+          founderEmail={founderEmail} setFounderEmail={setFounderEmail}
           orders={orders} updateOrder={updateOrder} deleteOrder={deleteOrder}
           toast={toast} modal={modal} setModal={setModal}
           editingProduct={editingProduct} setEditingProduct={setEditingProduct}
