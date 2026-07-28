@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, ordersTable } from "@workspace/db";
 import {
   CreateOrderBody,
@@ -33,8 +33,8 @@ router.get("/orders", async (req, res): Promise<void> => {
         .select()
         .from(ordersTable)
         .where(eq(ordersTable.email, parsedQuery.data.email.toLowerCase()))
-        .orderBy(asc(ordersTable.createdAt))
-    : await db.select().from(ordersTable).orderBy(asc(ordersTable.createdAt));
+        .orderBy(desc(ordersTable.createdAt))
+    : await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
 
   res.json(ListOrdersResponse.parse(rows.map(toApiOrder)));
 });
