@@ -488,6 +488,14 @@ function App() {
     let cancelled = false;
     const syncUsers = async () => {
       try {
+        // Upload any local users that aren't in the DB yet (one-time recovery for
+        // users who registered before the API was available)
+        const localUsers = storage.get<User[]>("bb-users-v2", []);
+        const nonAdminLocal = localUsers.filter((u) => u.id !== "u-admin");
+        if (nonAdminLocal.length > 0) {
+          await Promise.allSettled(nonAdminLocal.map((u) => createApiUser(u)));
+        }
+
         const apiUsers = await listApiUsers();
         if (!cancelled) {
           setUsers((prev) => {
@@ -542,6 +550,8 @@ function App() {
       if (!user) { setAuthError("Incorrect email or password."); return; }
       setCurrentUser(user); setModal(null); setAuthError("");
       toast(`Welcome back, ${user.name.split(" ")[0]}!`);
+      // Sync this user to DB in case they registered before the API was available
+      createApiUser(user).catch(() => {});
     } else {
       if (!name.trim()) { setAuthError("Please enter your name."); return; }
       if (!email.includes("@")) { setAuthError("Please enter a valid email address."); return; }
