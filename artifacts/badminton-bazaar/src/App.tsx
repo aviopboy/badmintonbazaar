@@ -1649,6 +1649,7 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
   const setActiveTab = (tab: "products" | "orders" | "users" | "settings") => setLocation(`/admin/${tab}`);
   const [bgUrl, setBgUrl] = useState(heroBackground);
   const [founderEmailDraft, setFounderEmailDraft] = useState(founderEmail);
+  useEffect(() => { setFounderEmailDraft(founderEmail); }, [founderEmail]);
   const allDisplayUsers = users;
 
   return (
