@@ -13,7 +13,7 @@
  * both you and the customer receive the update — and only your email needs
  * the one-time activation.
  */
-const FOUNDER_EMAIL = import.meta.env.VITE_FOUNDER_EMAIL || "aviiboi77@gmail.com";
+const FOUNDER_EMAIL = "aviiboi77@gmail.com";
 
 function money(n: number) {
   return "₹" + n.toLocaleString("en-IN");
