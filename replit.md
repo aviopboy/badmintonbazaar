@@ -66,4 +66,4 @@ Products are now stored in the shared Neon PostgreSQL database (`bb_products` ta
 
 - Keep the brand name **Badminton Bazaar** and logo letter **B**
 - Do not use Shopify or any other hosted commerce platform
-- Push to GitHub after every fix
+- **Always push to GitHub after every fix** (`git add -A && git commit -m "…" && git push`)
