@@ -501,7 +501,6 @@ function App() {
       {view === "admin" && currentUser?.admin && (
         <Admin products={products} users={users} setUsers={setUsers}
           heroBackground={heroBackground} setHeroBackground={setHeroBackground}
-          founderEmail={founderEmail} setFounderEmail={setFounderEmail}
           orders={orders} updateOrder={updateOrder} deleteOrder={deleteOrder}
           toast={toast} modal={modal} setModal={setModal}
           editingProduct={editingProduct} setEditingProduct={setEditingProduct}
@@ -1643,10 +1642,10 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
 /* ════════════════════════════════════════════════════════════════
    ADMIN PANEL
 ══════════════════════════════════════════════════════════════════ */
-function Admin({ products, users, setUsers, heroBackground, setHeroBackground, founderEmail, setFounderEmail, orders, updateOrder, deleteOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct, refreshOrders, ordersRefreshing }: {
+function Admin({ products, users, setUsers, heroBackground, setHeroBackground, orders, updateOrder, deleteOrder, toast, modal, setModal, editingProduct, setEditingProduct, saveProduct, deleteProduct, refreshOrders, ordersRefreshing }: {
   products: Product[]; users: User[]; setUsers: (v: User[]) => void;
   heroBackground: string; setHeroBackground: (v: string) => void;
-  founderEmail: string; setFounderEmail: (v: string) => void; orders: Order[];
+  orders: Order[];
   updateOrder: (id: string, status: OrderStatus, message: string) => void;
   deleteOrder: (id: string) => Promise<void>;
   toast: (msg: string, err?: boolean) => void; modal: Modal; setModal: (v: Modal) => void;
@@ -1663,8 +1662,6 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
   })();
   const setActiveTab = (tab: "products" | "orders" | "users" | "settings") => setLocation(`/admin/${tab}`);
   const [bgUrl, setBgUrl] = useState(heroBackground);
-  const [founderEmailDraft, setFounderEmailDraft] = useState(founderEmail);
-  useEffect(() => { setFounderEmailDraft(founderEmail); }, [founderEmail]);
   const allDisplayUsers = users;
 
   return (
@@ -1782,12 +1779,6 @@ function Admin({ products, users, setUsers, heroBackground, setHeroBackground, f
         {activeTab === "settings" && (
           <div className="admin-panel">
             <div className="panel-header"><h2>Store Settings</h2></div>
-            <div className="settings-section">
-              <h3>Founder Contact Email</h3>
-              <p className="settings-desc">This is the email address shown to customers as the payment review contact. Email sending is not connected on the free plan, so use the contact buttons in Payment Review.</p>
-              <div className="field"><label htmlFor="founder-email">Founder Email</label><input id="founder-email" type="email" value={founderEmailDraft} onChange={(e) => setFounderEmailDraft(e.target.value)} placeholder="founder@example.com" data-testid="input-founder-email" /></div>
-              <div className="settings-actions"><button className="btn-primary" onClick={() => { if (!founderEmailDraft.includes("@")) { toast("Enter a valid founder email.", true); return; } const e = founderEmailDraft.trim().toLowerCase(); storage.set("bb-founder-email", e); setFounderEmail(e); putSetting("founder-email", e).catch(() => {}); toast("Founder email updated."); }}>Save Founder Email</button></div>
-            </div>
             <div className="settings-section">
               <h3>Hero Background Image</h3>
               <p className="settings-desc">Set a custom background image URL for the hero banner. Leave blank to use the default dark gradient.</p>
