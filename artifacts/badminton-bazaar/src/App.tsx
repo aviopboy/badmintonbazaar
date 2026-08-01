@@ -25,8 +25,9 @@ type Product = {
   price: number; compareAt?: number; description: string;
   image: string; tags: string[]; featured?: boolean; badge?: string;
   showcase?: string; // URL to a showcase image or YouTube video (e.g. https://youtube.com/watch?v=...)
+  availableSizes?: string[]; // e.g. ["UK 6","UK 7","UK 8"] for shoes or ["S","M","L","XL"] for apparel
 };
-type CartLine = { productId: string; quantity: number };
+type CartLine = { productId: string; quantity: number; size?: string; power?: number };
 type User = { id: string; name: string; email: string; password: string; admin: boolean; joined: string };
 type OrderStatus = "pending" | "approved" | "rejected";
 type Order = {
@@ -42,7 +43,7 @@ type Order = {
   status: OrderStatus;
   reviewMessage: string;
   createdAt: string;
-  items: { name: string; brand: string; price: number; quantity: number }[];
+  items: { name: string; brand: string; price: number; quantity: number; size?: string; power?: number }[];
   total: number;
 };
 type Toast = { id: number; message: string; error?: boolean };
@@ -353,14 +354,17 @@ function App() {
     [products, category, query, sort]);
 
   const openProduct = (p: Product) => { setSelectedProduct(p); setModal("product"); };
-  const addToCart = (id: string, qty = 1) => {
+  const addToCart = (id: string, qty = 1, size?: string, power?: number) => {
     setCart((lines) => {
-      const ex = lines.find((l) => l.productId === id);
-      return ex ? lines.map((l) => l.productId === id ? { ...l, quantity: l.quantity + qty } : l) : [...lines, { productId: id, quantity: qty }];
+      const key = `${id}:${size ?? ""}:${power ?? ""}`;
+      const ex = lines.find((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}` === key);
+      return ex
+        ? lines.map((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}` === key ? { ...l, quantity: l.quantity + qty } : l)
+        : [...lines, { productId: id, quantity: qty, size, power }];
     });
     toast("Added to your bag ✓");
   };
-  const updateQty = (id: string, delta: number) => setCart((lines) => lines.map((l) => l.productId === id ? { ...l, quantity: Math.max(0, l.quantity + delta) } : l).filter((l) => l.quantity > 0));
+  const updateQty = (key: string, delta: number) => setCart((lines) => lines.map((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}` === key ? { ...l, quantity: Math.max(0, l.quantity + delta) } : l).filter((l) => l.quantity > 0));
   const toggleWishlist = (id: string) => setWishlist((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const requireAuth = () => { if (!currentUser) { setAuthMode("login"); setAuthError(""); setModal("auth"); return false; } return true; };
   const signOut = () => { setCurrentUser(null); setView("store"); toast("Signed out."); };
@@ -420,7 +424,7 @@ function App() {
   const submitOrder = async (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => {
     const items = cart.flatMap((line) => {
       const product = products.find((p) => p.id === line.productId);
-      return product ? [{ name: product.name, brand: product.brand, price: product.price, quantity: line.quantity }] : [];
+      return product ? [{ name: product.name, brand: product.brand, price: product.price, quantity: line.quantity, size: line.size, power: line.power }] : [];
     });
     const order: Order = {
       ...details,
@@ -541,7 +545,7 @@ function App() {
           user={currentUser}
           items={cart.flatMap((line) => {
             const product = products.find((p) => p.id === line.productId);
-            return product ? [{ name: product.name, quantity: line.quantity, price: product.price }] : [];
+            return product ? [{ name: product.name, quantity: line.quantity, price: product.price, size: line.size, power: line.power }] : [];
           })}
           founderEmail={founderEmail}
           submitOrder={submitOrder}
@@ -786,10 +790,10 @@ function HeroPhrase() {
   );
 }
 
-function Storefront({ products, allProducts, category, setCategory, sort, setSort, query, openProduct, addToCart, wishlist, toggleWishlist, heroBackground }: {
+function Storefront({ products, allProducts, category, setCategory, sort, setSort, query, openProduct, addToCart, wishlist, toggleWishlist, heroBackground }: { // eslint-disable-line @typescript-eslint/no-unused-vars
   products: Product[]; allProducts: Product[]; category: "All" | Category;
   setCategory: (v: "All" | Category) => void; sort: string; setSort: (v: string) => void;
-  query: string; openProduct: (p: Product) => void; addToCart: (id: string) => void;
+  query: string; openProduct: (p: Product) => void; addToCart: (id: string, qty?: number, size?: string, power?: number) => void;
   wishlist: string[]; toggleWishlist: (id: string) => void; heroBackground: string;
 }) {
   const featured = allProducts.filter((p) => p.featured).slice(0, 4);
@@ -879,7 +883,7 @@ function Storefront({ products, allProducts, category, setCategory, sort, setSor
 
 /* ─── Product Card ───────────────────────────────────────────── */
 function ProductCard({ product, openProduct, addToCart, isWishlisted, toggleWishlist }: {
-  product: Product; openProduct: (p: Product) => void; addToCart: (id: string) => void;
+  product: Product; openProduct: (p: Product) => void; addToCart: (id: string, qty?: number, size?: string, power?: number) => void;
   isWishlisted: boolean; toggleWishlist: (id: string) => void;
 }) {
   return (
@@ -901,7 +905,7 @@ function ProductCard({ product, openProduct, addToCart, isWishlisted, toggleWish
           <span className="price" data-testid={`text-price-${product.id}`}>{money(product.price)}</span>
           {product.compareAt && <span className="price-old">{money(product.compareAt)}</span>}
         </div>
-        <button className="btn-add-cart" onClick={() => addToCart(product.id)} data-testid={`button-add-cart-${product.id}`}>Add to Bag</button>
+        <button className="btn-add-cart" onClick={() => (product.category === "Shuttlecocks" || (product.availableSizes && product.availableSizes.length > 0)) ? openProduct(product) : addToCart(product.id)} data-testid={`button-add-cart-${product.id}`}>Add to Bag</button>
       </div>
     </article>
   );
@@ -909,11 +913,16 @@ function ProductCard({ product, openProduct, addToCart, isWishlisted, toggleWish
 
 /* ─── Product Modal ──────────────────────────────────────────── */
 function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
-  product: Product; close: () => void; addToCart: (id: string, qty?: number) => void;
+  product: Product; close: () => void; addToCart: (id: string, qty?: number, size?: string, power?: number) => void;
   wishlist: string[]; toggleWishlist: (id: string) => void;
 }) {
   const [qty, setQty] = useState(1);
   const [showShowcase, setShowShowcase] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedPower, setSelectedPower] = useState<number | undefined>(undefined);
+  const needsSize = product.availableSizes && product.availableSizes.length > 0;
+  const needsPower = product.category === "Shuttlecocks";
+  const canAdd = (!needsSize || selectedSize !== "") && (!needsPower || selectedPower !== undefined);
   const embedUrl = product.showcase && isYouTubeUrl(product.showcase) ? youtubeEmbedUrl(product.showcase) : null;
 
   return (
@@ -949,13 +958,38 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
               {money(product.price)}
               {product.compareAt && <span className="price-old" style={{ fontSize: 16, marginLeft: 10 }}>{money(product.compareAt)}</span>}
             </div>
+            {needsPower && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Shuttlecock Power <span style={{ color: "#ef4444" }}>*</span></label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[76, 77].map((p) => (
+                    <button key={p} type="button"
+                      className={selectedPower === p ? "btn-primary" : "btn-ghost"}
+                      style={{ minWidth: 64, fontWeight: 700, fontSize: 15 }}
+                      onClick={() => setSelectedPower(p)}
+                    >{p}</button>
+                  ))}
+                </div>
+                {selectedPower === undefined && <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Please select a power speed</p>}
+              </div>
+            )}
+            {needsSize && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Size <span style={{ color: "#ef4444" }}>*</span></label>
+                <select value={selectedSize} onChange={(e) => setSelectedSize(e.target.value)} style={{ width: "100%" }}>
+                  <option value="">— Select a size —</option>
+                  {product.availableSizes!.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {selectedSize === "" && <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Please select a size</p>}
+              </div>
+            )}
             <div className="qty-row">
               <div className="qty-ctrl">
                 <button onClick={() => setQty(Math.max(1, qty - 1))} data-testid="button-detail-decrease"><Minus size={15} /></button>
                 <span data-testid="text-detail-quantity">{qty}</span>
                 <button onClick={() => setQty(qty + 1)} data-testid="button-detail-increase"><Plus size={15} /></button>
               </div>
-              <button className="btn-primary btn-full-row" onClick={() => { addToCart(product.id, qty); close(); }} data-testid="button-detail-add">
+              <button className="btn-primary btn-full-row" disabled={!canAdd} onClick={() => { if (canAdd) { addToCart(product.id, qty, needsSize ? selectedSize : undefined, needsPower ? selectedPower : undefined); close(); } }} data-testid="button-detail-add">
                 Add {qty > 1 ? `${qty} ` : ""}to Bag
               </button>
               <button className={`btn-icon-outline ${wishlist.includes(product.id) ? "wishlisted" : ""}`} onClick={() => toggleWishlist(product.id)} data-testid="button-detail-wishlist" title="Wishlist">
@@ -972,7 +1006,7 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
 
 /* ─── Cart Drawer ────────────────────────────────────────────── */
 function CartDrawer({ cart, products, close, updateQty, openProduct, total, requireAuth, setModal, toast }: {
-  cart: CartLine[]; products: Product[]; close: () => void; updateQty: (id: string, n: number) => void;
+  cart: CartLine[]; products: Product[]; close: () => void; updateQty: (key: string, n: number) => void;
   openProduct: (p: Product) => void; total: number; requireAuth: () => boolean;
   setModal: (v: Modal) => void; toast: (msg: string, err?: boolean) => void;
 }) {
@@ -993,22 +1027,27 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
                 const p = products.find((x) => x.id === line.productId);
                 if (!p) return null;
                 return (
-                  <div className="cart-line" key={line.productId} data-testid={`row-cart-${line.productId}`}>
+                  <div className="cart-line" key={`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`} data-testid={`row-cart-${line.productId}`}>
                     <button className="cart-img-btn" onClick={() => { close(); openProduct(p); }}>
                       <img src={p.image} alt={p.name} onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(p.category), "#59635a"); }} />
                     </button>
                     <div className="cart-line-info">
                       <h4>{p.name}</h4>
                       <p>{p.brand} · {money(p.price)}</p>
+                      {(line.size || line.power) && (
+                        <p style={{ fontSize: 11, color: "rgb(var(--paper-muted))", marginTop: 2 }}>
+                          {line.size ? `Size: ${line.size}` : ""}{line.size && line.power ? " · " : ""}{line.power ? `Power: ${line.power}` : ""}
+                        </p>
+                      )}
                       <div className="qty-ctrl sm">
-                        <button onClick={() => updateQty(p.id, -1)} data-testid={`button-cart-decrease-${p.id}`}><Minus size={12} /></button>
+                        <button onClick={() => updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`, -1)} data-testid={`button-cart-decrease-${p.id}`}><Minus size={12} /></button>
                         <span>{line.quantity}</span>
-                        <button onClick={() => updateQty(p.id, 1)} data-testid={`button-cart-increase-${p.id}`}><Plus size={12} /></button>
+                        <button onClick={() => updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`, 1)} data-testid={`button-cart-increase-${p.id}`}><Plus size={12} /></button>
                       </div>
                     </div>
                     <div className="cart-line-right">
                       <span>{money(p.price * line.quantity)}</span>
-                      <button className="remove-btn" onClick={() => { updateQty(p.id, -line.quantity); toast("Removed from bag."); }} data-testid={`button-remove-cart-${p.id}`}><Trash2 size={13} /></button>
+                      <button className="remove-btn" onClick={() => { updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`, -line.quantity); toast("Removed from bag."); }} data-testid={`button-remove-cart-${p.id}`}><Trash2 size={13} /></button>
                     </div>
                   </div>
                 );
@@ -1093,7 +1132,7 @@ function CheckoutModal({
   close: () => void;
   total: number;
   user: User | null;
-  items: { name: string; quantity: number; price: number }[];
+  items: { name: string; quantity: number; price: number; size?: string; power?: number }[];
   founderEmail: string;
   submitOrder: (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => Promise<Order>;
 }) {
@@ -1437,7 +1476,7 @@ function InvoiceCard({ order }: { order: Order }) {
         <span className={`status-pill ${order.status}`}>{statusLabel}</span>
       </div>
       <div className="order-card-items">
-        {order.items.map((item) => <span key={`${order.id}-${item.name}`}>{item.name} × {item.quantity}</span>)}
+        {order.items.map((item) => <span key={`${order.id}-${item.name}-${item.size ?? ""}-${item.power ?? ""}`}>{item.name}{item.size ? ` [${item.size}]` : ""}{item.power ? ` [Power ${item.power}]` : ""} × {item.quantity}</span>)}
       </div>
       <div className="order-card-foot"><strong>{money(order.total)}</strong><button className="btn-ghost btn-small" onClick={downloadInvoice}><Download size={14} /> Download Invoice</button></div>
       {order.reviewMessage && <p className="review-message">{order.reviewMessage}</p>}
@@ -1530,7 +1569,7 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
           <p><Phone size={14} /> {order.phone}</p>
           <p className="address-line"><strong>Deliver to:</strong> {order.address}</p>
           {order.additionalContact && <p className="address-line"><strong>Additional:</strong> {order.additionalContact}</p>}
-          <div className="review-items">{order.items.map((item) => <span key={`${order.id}-${item.name}`}>{item.name} × {item.quantity} — {money(item.price * item.quantity)}</span>)}</div>
+          <div className="review-items">{order.items.map((item) => <span key={`${order.id}-${item.name}-${item.size ?? ""}-${item.power ?? ""}`}>{item.name}{item.size ? ` [${item.size}]` : ""}{item.power ? ` [Power ${item.power}]` : ""} × {item.quantity} — {money(item.price * item.quantity)}</span>)}</div>
           <div className="review-total"><span>Total</span><strong>{money(order.total)}</strong></div>
           <p className="payment-reference"><strong>UPI reference:</strong> {order.paymentReference}</p>
         </div>
@@ -1848,6 +1887,13 @@ function ProductEditor({ product, close, save }: {
             </div>
             <div className="field"><label htmlFor="pe-desc">Description</label><textarea id="pe-desc" value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="Short product description…" data-testid="input-product-description" /></div>
             <div className="field"><label htmlFor="pe-tags">Tags (comma separated)</label><input id="pe-tags" value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} placeholder="e.g. head heavy, 4U, stiff" data-testid="input-product-tags" /></div>
+            {(draft.category === "Shoes" || draft.category === "Apparel" || draft.category === "Socks") && (
+              <div className="field">
+                <label htmlFor="pe-sizes">Available Sizes (comma separated)</label>
+                <input id="pe-sizes" value={draft.availableSizes?.join(", ") ?? ""} onChange={(e) => set("availableSizes", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder={draft.category === "Shoes" ? "e.g. UK 6, UK 7, UK 8, UK 9, UK 10" : "e.g. XS, S, M, L, XL, XXL"} data-testid="input-product-sizes" />
+                <span className="field-hint">Customers will choose from these sizes when adding to bag. Leave blank for no size selection.</span>
+              </div>
+            )}
             <div className="field">
               <label htmlFor="pe-showcase"><Video size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />Showcase URL (optional)</label>
               <input id="pe-showcase" value={draft.showcase ?? ""} onChange={(e) => set("showcase", e.target.value || undefined)} placeholder="Optional YouTube URL or image URL" data-testid="input-product-showcase" />

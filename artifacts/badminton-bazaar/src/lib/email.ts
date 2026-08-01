@@ -56,7 +56,7 @@ export interface OrderEmailParams {
   paymentReference: string;
   /** base64 data-URL — NOT sent (formsubmit.co doesn't support inline images) */
   paymentProof: string;
-  items: { name: string; brand: string; price: number; quantity: number }[];
+  items: { name: string; brand: string; price: number; quantity: number; size?: string; power?: number }[];
   total: number;
   createdAt: string;
 }
@@ -68,7 +68,7 @@ export interface StatusEmailParams {
   status: "approved" | "rejected";
   /** Delivery date for approvals; rejection reason for rejections */
   statusMessage: string;
-  items: { name: string; brand: string; price: number; quantity: number }[];
+  items: { name: string; brand: string; price: number; quantity: number; size?: string; power?: number }[];
   total: number;
 }
 
@@ -92,7 +92,7 @@ export async function sendOrderEmail(params: OrderEmailParams): Promise<void> {
   const itemLines = params.items
     .map(
       (i) =>
-        `${i.brand} ${i.name} × ${i.quantity}  →  ${money(i.price * i.quantity)}`
+        `${i.brand} ${i.name}${i.size ? ` [Size: ${i.size}]` : ""}${i.power ? ` [Power: ${i.power}]` : ""} × ${i.quantity}  →  ${money(i.price * i.quantity)}`
     )
     .join("\n");
 
@@ -133,7 +133,7 @@ export async function sendStatusEmail(params: StatusEmailParams): Promise<void> 
   const itemLines = params.items
     .map(
       (i) =>
-        `${i.brand} ${i.name} × ${i.quantity}  →  ${money(i.price * i.quantity)}`
+        `${i.brand} ${i.name}${i.size ? ` [Size: ${i.size}]` : ""}${i.power ? ` [Power: ${i.power}]` : ""} × ${i.quantity}  →  ${money(i.price * i.quantity)}`
     )
     .join("\n");
 
