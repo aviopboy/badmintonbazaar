@@ -979,10 +979,10 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
               <div className="field" style={{ marginBottom: 12 }}>
                 <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Speed <span style={{ color: "#ef4444" }}>*</span></label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {["Slow", "Medium", "Fast", "Very Fast"].map((s) => (
+                  {["75", "76", "77", "78"].map((s) => (
                     <button key={s} type="button"
                       className={selectedSpeed === s ? "btn-primary" : "btn-ghost"}
-                      style={{ minWidth: 72, fontWeight: 700, fontSize: 14 }}
+                      style={{ minWidth: 64, fontWeight: 700, fontSize: 15 }}
                       onClick={() => setSelectedSpeed(s)}
                     >{s}</button>
                   ))}
