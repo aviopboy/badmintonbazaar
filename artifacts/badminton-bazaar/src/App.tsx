@@ -1843,6 +1843,7 @@ function ProductEditor({ product, close, save }: {
 }) {
   const [draft, setDraft] = useState<Product>({ ...product });
   const [tagsStr, setTagsStr] = useState(product.tags.join(", "));
+  const [sizesStr, setSizesStr] = useState(product.availableSizes?.join(", ") ?? "");
   const [compareAtStr, setCompareAtStr] = useState(product.compareAt ? String(product.compareAt) : "");
   const [candidates, setCandidates] = useState<{ label: string; url: string }[]>([]);
   const [loadingImgs, setLoadingImgs] = useState(false);
@@ -1860,7 +1861,7 @@ function ProductEditor({ product, close, save }: {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft.name.trim() || !draft.brand.trim() || draft.price <= 0) return;
-    save({ ...draft, tags: tagsStr.split(",").map((t) => t.trim()).filter(Boolean), compareAt: compareAtStr ? Number(compareAtStr) : undefined });
+    save({ ...draft, tags: tagsStr.split(",").map((t) => t.trim()).filter(Boolean), availableSizes: sizesStr.split(",").map((s) => s.trim()).filter(Boolean), compareAt: compareAtStr ? Number(compareAtStr) : undefined });
   };
 
   return (
@@ -1892,7 +1893,7 @@ function ProductEditor({ product, close, save }: {
             {(draft.category === "Shoes" || draft.category === "Apparel" || draft.category === "Socks") && (
               <div className="field">
                 <label htmlFor="pe-sizes">Available Sizes (comma separated)</label>
-                <input id="pe-sizes" value={draft.availableSizes?.join(", ") ?? ""} onChange={(e) => set("availableSizes", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder={draft.category === "Shoes" ? "e.g. UK 6, UK 7, UK 8, UK 9, UK 10" : "e.g. XS, S, M, L, XL, XXL"} data-testid="input-product-sizes" />
+                <input id="pe-sizes" value={sizesStr} onChange={(e) => setSizesStr(e.target.value)} placeholder={draft.category === "Shoes" ? "e.g. UK 6, UK 7, UK 8, UK 9, UK 10" : "e.g. XS, S, M, L, XL, XXL"} data-testid="input-product-sizes" />
                 <span className="field-hint">Customers will choose from these sizes when adding to bag. Leave blank for no size selection.</span>
               </div>
             )}
