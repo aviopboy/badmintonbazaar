@@ -920,13 +920,11 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
   const [qty, setQty] = useState(1);
   const [showShowcase, setShowShowcase] = useState(false);
   const [selectedSize, setSelectedSize] = useState("");
-  const [selectedPower, setSelectedPower] = useState<number | undefined>(undefined);
   const [selectedSpeed, setSelectedSpeed] = useState<string>("");
   const needsSize = product.availableSizes && product.availableSizes.length > 0;
-  const needsPower = product.category === "Shuttlecocks";
   const speedOptions = (product.availableSpeeds && product.availableSpeeds.length > 0) ? product.availableSpeeds : ["75", "76", "77", "78"];
   const needsSpeed = product.category === "Shuttlecocks";
-  const canAdd = (!needsSize || selectedSize !== "") && (!needsPower || selectedPower !== undefined) && (!needsSpeed || selectedSpeed !== "");
+  const canAdd = (!needsSize || selectedSize !== "") && (!needsSpeed || selectedSpeed !== "");
   const embedUrl = product.showcase && isYouTubeUrl(product.showcase) ? youtubeEmbedUrl(product.showcase) : null;
 
   return (
@@ -962,21 +960,6 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
               {money(product.price)}
               {product.compareAt && <span className="price-old" style={{ fontSize: 16, marginLeft: 10 }}>{money(product.compareAt)}</span>}
             </div>
-            {needsPower && (
-              <div className="field" style={{ marginBottom: 12 }}>
-                <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Shuttlecock Power <span style={{ color: "#ef4444" }}>*</span></label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[76, 77].map((p) => (
-                    <button key={p} type="button"
-                      className={selectedPower === p ? "btn-primary" : "btn-ghost"}
-                      style={{ minWidth: 64, fontWeight: 700, fontSize: 15 }}
-                      onClick={() => setSelectedPower(p)}
-                    >{p}</button>
-                  ))}
-                </div>
-                {selectedPower === undefined && <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Please select a power rating</p>}
-              </div>
-            )}
             {needsSpeed && (
               <div className="field" style={{ marginBottom: 12 }}>
                 <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Speed <span style={{ color: "#ef4444" }}>*</span></label>
@@ -1008,7 +991,7 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
                 <span data-testid="text-detail-quantity">{qty}</span>
                 <button onClick={() => setQty(qty + 1)} data-testid="button-detail-increase"><Plus size={15} /></button>
               </div>
-              <button className="btn-primary btn-full-row" disabled={!canAdd} onClick={() => { if (canAdd) { addToCart(product.id, qty, needsSize ? selectedSize : undefined, needsPower ? selectedPower : undefined, needsSpeed ? selectedSpeed : undefined); close(); } }} data-testid="button-detail-add">
+              <button className="btn-primary btn-full-row" disabled={!canAdd} onClick={() => { if (canAdd) { addToCart(product.id, qty, needsSize ? selectedSize : undefined, undefined, needsSpeed ? selectedSpeed : undefined); close(); } }} data-testid="button-detail-add">
                 Add {qty > 1 ? `${qty} ` : ""}to Bag
               </button>
               <button className={`btn-icon-outline ${wishlist.includes(product.id) ? "wishlisted" : ""}`} onClick={() => toggleWishlist(product.id)} data-testid="button-detail-wishlist" title="Wishlist">
