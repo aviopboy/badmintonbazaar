@@ -13,4 +13,6 @@ export const productsTable = pgTable("bb_products", {
   featured: boolean("featured").notNull().default(false),
   badge: text("badge"),
   showcase: text("showcase"),
+  availableSizes: jsonb("available_sizes").$type<string[]>().default([]),
+  availableSpeeds: jsonb("available_speeds").$type<string[]>().default([]),
 });

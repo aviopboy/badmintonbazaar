@@ -13,6 +13,8 @@ function toApiProduct(row: typeof productsTable.$inferSelect) {
     featured: row.featured ?? false,
     badge: row.badge ?? undefined,
     showcase: row.showcase ?? undefined,
+    availableSizes: (row.availableSizes ?? []) as string[],
+    availableSpeeds: (row.availableSpeeds ?? []) as string[],
   };
 }
 
@@ -24,10 +26,11 @@ router.get("/products", async (_req, res): Promise<void> => {
 
 // POST /products — admin only (enforced client-side for now)
 router.post("/products", async (req, res): Promise<void> => {
-  const { id, name, brand, category, price, compareAt, description, image, tags, featured, badge, showcase } = req.body as {
+  const { id, name, brand, category, price, compareAt, description, image, tags, featured, badge, showcase, availableSizes, availableSpeeds } = req.body as {
     id: string; name: string; brand: string; category: string;
     price: number; compareAt?: number; description: string;
     image: string; tags: string[]; featured?: boolean; badge?: string; showcase?: string;
+    availableSizes?: string[]; availableSpeeds?: string[];
   };
 
   if (!id || !name || !brand || !category || price == null) {
@@ -57,6 +60,8 @@ router.post("/products", async (req, res): Promise<void> => {
       featured: featured ?? false,
       badge: badge ?? null,
       showcase: showcase ?? null,
+      availableSizes: availableSizes ?? [],
+      availableSpeeds: availableSpeeds ?? [],
     })
     .returning();
 
@@ -66,10 +71,11 @@ router.post("/products", async (req, res): Promise<void> => {
 // PUT /products/:id — update
 router.put("/products/:id", async (req, res): Promise<void> => {
   const { id } = req.params;
-  const { name, brand, category, price, compareAt, description, image, tags, featured, badge, showcase } = req.body as {
+  const { name, brand, category, price, compareAt, description, image, tags, featured, badge, showcase, availableSizes, availableSpeeds } = req.body as {
     name: string; brand: string; category: string;
     price: number; compareAt?: number; description: string;
     image: string; tags: string[]; featured?: boolean; badge?: string; showcase?: string;
+    availableSizes?: string[]; availableSpeeds?: string[];
   };
 
   const [row] = await db
@@ -86,6 +92,8 @@ router.put("/products/:id", async (req, res): Promise<void> => {
       featured: featured ?? false,
       badge: badge ?? null,
       showcase: showcase ?? null,
+      availableSizes: availableSizes ?? [],
+      availableSpeeds: availableSpeeds ?? [],
     })
     .where(eq(productsTable.id, id))
     .returning();

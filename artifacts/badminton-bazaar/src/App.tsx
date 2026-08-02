@@ -26,6 +26,7 @@ type Product = {
   image: string; tags: string[]; featured?: boolean; badge?: string;
   showcase?: string; // URL to a showcase image or YouTube video (e.g. https://youtube.com/watch?v=...)
   availableSizes?: string[]; // e.g. ["UK 6","UK 7","UK 8"] for shoes or ["S","M","L","XL"] for apparel
+  availableSpeeds?: string[]; // e.g. ["75","76","77","78"] for shuttlecocks
 };
 type CartLine = { productId: string; quantity: number; size?: string; power?: number; speed?: string };
 type User = { id: string; name: string; email: string; password: string; admin: boolean; joined: string };
@@ -923,6 +924,7 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
   const [selectedSpeed, setSelectedSpeed] = useState<string>("");
   const needsSize = product.availableSizes && product.availableSizes.length > 0;
   const needsPower = product.category === "Shuttlecocks";
+  const speedOptions = (product.availableSpeeds && product.availableSpeeds.length > 0) ? product.availableSpeeds : ["75", "76", "77", "78"];
   const needsSpeed = product.category === "Shuttlecocks";
   const canAdd = (!needsSize || selectedSize !== "") && (!needsPower || selectedPower !== undefined) && (!needsSpeed || selectedSpeed !== "");
   const embedUrl = product.showcase && isYouTubeUrl(product.showcase) ? youtubeEmbedUrl(product.showcase) : null;
@@ -979,7 +981,7 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
               <div className="field" style={{ marginBottom: 12 }}>
                 <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Speed <span style={{ color: "#ef4444" }}>*</span></label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {["75", "76", "77", "78"].map((s) => (
+                  {speedOptions.map((s) => (
                     <button key={s} type="button"
                       className={selectedSpeed === s ? "btn-primary" : "btn-ghost"}
                       style={{ minWidth: 64, fontWeight: 700, fontSize: 15 }}
@@ -1909,6 +1911,30 @@ function ProductEditor({ product, close, save }: {
                 <label htmlFor="pe-sizes">Available Sizes (comma separated)</label>
                 <input id="pe-sizes" value={draft.availableSizes?.join(", ") ?? ""} onChange={(e) => set("availableSizes", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder={draft.category === "Shoes" ? "e.g. UK 6, UK 7, UK 8, UK 9, UK 10" : "e.g. XS, S, M, L, XL, XXL"} data-testid="input-product-sizes" />
                 <span className="field-hint">Customers will choose from these sizes when adding to bag. Leave blank for no size selection.</span>
+              </div>
+            )}
+            {draft.category === "Shuttlecocks" && (
+              <div className="field">
+                <label>Available Speeds</label>
+                <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                  {["75", "76", "77", "78"].map((s) => {
+                    const checked = (draft.availableSpeeds ?? ["75", "76", "77", "78"]).includes(s);
+                    return (
+                      <label key={s} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const current = draft.availableSpeeds ?? ["75", "76", "77", "78"];
+                            set("availableSpeeds", e.target.checked ? [...current, s] : current.filter((x) => x !== s));
+                          }}
+                        />
+                        {s}
+                      </label>
+                    );
+                  })}
+                </div>
+                <span className="field-hint">Customers will choose from these speeds when adding to bag. All 4 are shown by default.</span>
               </div>
             )}
             <div className="field">
