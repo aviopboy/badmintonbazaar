@@ -27,7 +27,7 @@ type Product = {
   showcase?: string; // URL to a showcase image or YouTube video (e.g. https://youtube.com/watch?v=...)
   availableSizes?: string[]; // e.g. ["UK 6","UK 7","UK 8"] for shoes or ["S","M","L","XL"] for apparel
 };
-type CartLine = { productId: string; quantity: number; size?: string; power?: number };
+type CartLine = { productId: string; quantity: number; size?: string; power?: number; speed?: string };
 type User = { id: string; name: string; email: string; password: string; admin: boolean; joined: string };
 type OrderStatus = "pending" | "approved" | "rejected";
 type Order = {
@@ -43,7 +43,7 @@ type Order = {
   status: OrderStatus;
   reviewMessage: string;
   createdAt: string;
-  items: { name: string; brand: string; price: number; quantity: number; size?: string; power?: number }[];
+  items: { name: string; brand: string; price: number; quantity: number; size?: string; power?: number; speed?: string }[];
   total: number;
 };
 type Toast = { id: number; message: string; error?: boolean };
@@ -354,17 +354,17 @@ function App() {
     [products, category, query, sort]);
 
   const openProduct = (p: Product) => { setSelectedProduct(p); setModal("product"); };
-  const addToCart = (id: string, qty = 1, size?: string, power?: number) => {
+  const addToCart = (id: string, qty = 1, size?: string, power?: number, speed?: string) => {
     setCart((lines) => {
-      const key = `${id}:${size ?? ""}:${power ?? ""}`;
-      const ex = lines.find((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}` === key);
+      const key = `${id}:${size ?? ""}:${power ?? ""}:${speed ?? ""}`;
+      const ex = lines.find((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}:${l.speed ?? ""}` === key);
       return ex
-        ? lines.map((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}` === key ? { ...l, quantity: l.quantity + qty } : l)
-        : [...lines, { productId: id, quantity: qty, size, power }];
+        ? lines.map((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}:${l.speed ?? ""}` === key ? { ...l, quantity: l.quantity + qty } : l)
+        : [...lines, { productId: id, quantity: qty, size, power, speed }];
     });
     toast("Added to your bag ✓");
   };
-  const updateQty = (key: string, delta: number) => setCart((lines) => lines.map((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}` === key ? { ...l, quantity: Math.max(0, l.quantity + delta) } : l).filter((l) => l.quantity > 0));
+  const updateQty = (key: string, delta: number) => setCart((lines) => lines.map((l) => `${l.productId}:${l.size ?? ""}:${l.power ?? ""}:${l.speed ?? ""}` === key ? { ...l, quantity: Math.max(0, l.quantity + delta) } : l).filter((l) => l.quantity > 0));
   const toggleWishlist = (id: string) => setWishlist((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const requireAuth = () => { if (!currentUser) { setAuthMode("login"); setAuthError(""); setModal("auth"); return false; } return true; };
   const signOut = () => { setCurrentUser(null); setView("store"); toast("Signed out."); };
@@ -424,7 +424,7 @@ function App() {
   const submitOrder = async (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => {
     const items = cart.flatMap((line) => {
       const product = products.find((p) => p.id === line.productId);
-      return product ? [{ name: product.name, brand: product.brand, price: product.price, quantity: line.quantity, size: line.size, power: line.power }] : [];
+      return product ? [{ name: product.name, brand: product.brand, price: product.price, quantity: line.quantity, size: line.size, power: line.power, speed: line.speed }] : [];
     });
     const order: Order = {
       ...details,
@@ -545,7 +545,7 @@ function App() {
           user={currentUser}
           items={cart.flatMap((line) => {
             const product = products.find((p) => p.id === line.productId);
-            return product ? [{ name: product.name, quantity: line.quantity, price: product.price, size: line.size, power: line.power }] : [];
+            return product ? [{ name: product.name, quantity: line.quantity, price: product.price, size: line.size, power: line.power, speed: line.speed }] : [];
           })}
           founderEmail={founderEmail}
           submitOrder={submitOrder}
@@ -793,7 +793,7 @@ function HeroPhrase() {
 function Storefront({ products, allProducts, category, setCategory, sort, setSort, query, openProduct, addToCart, wishlist, toggleWishlist, heroBackground }: { // eslint-disable-line @typescript-eslint/no-unused-vars
   products: Product[]; allProducts: Product[]; category: "All" | Category;
   setCategory: (v: "All" | Category) => void; sort: string; setSort: (v: string) => void;
-  query: string; openProduct: (p: Product) => void; addToCart: (id: string, qty?: number, size?: string, power?: number) => void;
+  query: string; openProduct: (p: Product) => void; addToCart: (id: string, qty?: number, size?: string, power?: number, speed?: string) => void;
   wishlist: string[]; toggleWishlist: (id: string) => void; heroBackground: string;
 }) {
   const featured = allProducts.filter((p) => p.featured).slice(0, 4);
@@ -883,7 +883,7 @@ function Storefront({ products, allProducts, category, setCategory, sort, setSor
 
 /* ─── Product Card ───────────────────────────────────────────── */
 function ProductCard({ product, openProduct, addToCart, isWishlisted, toggleWishlist }: {
-  product: Product; openProduct: (p: Product) => void; addToCart: (id: string, qty?: number, size?: string, power?: number) => void;
+  product: Product; openProduct: (p: Product) => void; addToCart: (id: string, qty?: number, size?: string, power?: number, speed?: string) => void;
   isWishlisted: boolean; toggleWishlist: (id: string) => void;
 }) {
   return (
@@ -913,16 +913,18 @@ function ProductCard({ product, openProduct, addToCart, isWishlisted, toggleWish
 
 /* ─── Product Modal ──────────────────────────────────────────── */
 function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
-  product: Product; close: () => void; addToCart: (id: string, qty?: number, size?: string, power?: number) => void;
+  product: Product; close: () => void; addToCart: (id: string, qty?: number, size?: string, power?: number, speed?: string) => void;
   wishlist: string[]; toggleWishlist: (id: string) => void;
 }) {
   const [qty, setQty] = useState(1);
   const [showShowcase, setShowShowcase] = useState(false);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedPower, setSelectedPower] = useState<number | undefined>(undefined);
+  const [selectedSpeed, setSelectedSpeed] = useState<string>("");
   const needsSize = product.availableSizes && product.availableSizes.length > 0;
   const needsPower = product.category === "Shuttlecocks";
-  const canAdd = (!needsSize || selectedSize !== "") && (!needsPower || selectedPower !== undefined);
+  const needsSpeed = product.category === "Shuttlecocks";
+  const canAdd = (!needsSize || selectedSize !== "") && (!needsPower || selectedPower !== undefined) && (!needsSpeed || selectedSpeed !== "");
   const embedUrl = product.showcase && isYouTubeUrl(product.showcase) ? youtubeEmbedUrl(product.showcase) : null;
 
   return (
@@ -970,7 +972,22 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
                     >{p}</button>
                   ))}
                 </div>
-                {selectedPower === undefined && <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Please select a power speed</p>}
+                {selectedPower === undefined && <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Please select a power rating</p>}
+              </div>
+            )}
+            {needsSpeed && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block" }}>Speed <span style={{ color: "#ef4444" }}>*</span></label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {["Slow", "Medium", "Fast", "Very Fast"].map((s) => (
+                    <button key={s} type="button"
+                      className={selectedSpeed === s ? "btn-primary" : "btn-ghost"}
+                      style={{ minWidth: 72, fontWeight: 700, fontSize: 14 }}
+                      onClick={() => setSelectedSpeed(s)}
+                    >{s}</button>
+                  ))}
+                </div>
+                {selectedSpeed === "" && <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>Please select a speed</p>}
               </div>
             )}
             {needsSize && (
@@ -989,7 +1006,7 @@ function ProductModal({ product, close, addToCart, wishlist, toggleWishlist }: {
                 <span data-testid="text-detail-quantity">{qty}</span>
                 <button onClick={() => setQty(qty + 1)} data-testid="button-detail-increase"><Plus size={15} /></button>
               </div>
-              <button className="btn-primary btn-full-row" disabled={!canAdd} onClick={() => { if (canAdd) { addToCart(product.id, qty, needsSize ? selectedSize : undefined, needsPower ? selectedPower : undefined); close(); } }} data-testid="button-detail-add">
+              <button className="btn-primary btn-full-row" disabled={!canAdd} onClick={() => { if (canAdd) { addToCart(product.id, qty, needsSize ? selectedSize : undefined, needsPower ? selectedPower : undefined, needsSpeed ? selectedSpeed : undefined); close(); } }} data-testid="button-detail-add">
                 Add {qty > 1 ? `${qty} ` : ""}to Bag
               </button>
               <button className={`btn-icon-outline ${wishlist.includes(product.id) ? "wishlisted" : ""}`} onClick={() => toggleWishlist(product.id)} data-testid="button-detail-wishlist" title="Wishlist">
@@ -1027,27 +1044,27 @@ function CartDrawer({ cart, products, close, updateQty, openProduct, total, requ
                 const p = products.find((x) => x.id === line.productId);
                 if (!p) return null;
                 return (
-                  <div className="cart-line" key={`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`} data-testid={`row-cart-${line.productId}`}>
+                  <div className="cart-line" key={`${line.productId}:${line.size ?? ""}:${line.power ?? ""}:${line.speed ?? ""}`} data-testid={`row-cart-${line.productId}`}>
                     <button className="cart-img-btn" onClick={() => { close(); openProduct(p); }}>
                       <img src={p.image} alt={p.name} onError={(e) => { (e.target as HTMLImageElement).src = svgArt(categoryToSvgKind(p.category), "#59635a"); }} />
                     </button>
                     <div className="cart-line-info">
                       <h4>{p.name}</h4>
                       <p>{p.brand} · {money(p.price)}</p>
-                      {(line.size || line.power) && (
+                      {(line.size || line.power || line.speed) && (
                         <p style={{ fontSize: 11, color: "rgb(var(--paper-muted))", marginTop: 2 }}>
-                          {line.size ? `Size: ${line.size}` : ""}{line.size && line.power ? " · " : ""}{line.power ? `Power: ${line.power}` : ""}
+                          {line.size ? `Size: ${line.size}` : ""}{line.size && (line.power || line.speed) ? " · " : ""}{line.power ? `Power: ${line.power}` : ""}{line.power && line.speed ? " · " : ""}{line.speed ? `Speed: ${line.speed}` : ""}
                         </p>
                       )}
                       <div className="qty-ctrl sm">
-                        <button onClick={() => updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`, -1)} data-testid={`button-cart-decrease-${p.id}`}><Minus size={12} /></button>
+                        <button onClick={() => updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}:${line.speed ?? ""}`, -1)} data-testid={`button-cart-decrease-${p.id}`}><Minus size={12} /></button>
                         <span>{line.quantity}</span>
-                        <button onClick={() => updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`, 1)} data-testid={`button-cart-increase-${p.id}`}><Plus size={12} /></button>
+                        <button onClick={() => updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}:${line.speed ?? ""}`, 1)} data-testid={`button-cart-increase-${p.id}`}><Plus size={12} /></button>
                       </div>
                     </div>
                     <div className="cart-line-right">
                       <span>{money(p.price * line.quantity)}</span>
-                      <button className="remove-btn" onClick={() => { updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}`, -line.quantity); toast("Removed from bag."); }} data-testid={`button-remove-cart-${p.id}`}><Trash2 size={13} /></button>
+                      <button className="remove-btn" onClick={() => { updateQty(`${line.productId}:${line.size ?? ""}:${line.power ?? ""}:${line.speed ?? ""}`, -line.quantity); toast("Removed from bag."); }} data-testid={`button-remove-cart-${p.id}`}><Trash2 size={13} /></button>
                     </div>
                   </div>
                 );
@@ -1132,7 +1149,7 @@ function CheckoutModal({
   close: () => void;
   total: number;
   user: User | null;
-  items: { name: string; quantity: number; price: number; size?: string; power?: number }[];
+  items: { name: string; quantity: number; price: number; size?: string; power?: number; speed?: string }[];
   founderEmail: string;
   submitOrder: (details: Omit<Order, "id" | "userId" | "status" | "reviewMessage" | "createdAt" | "items" | "total">) => Promise<Order>;
 }) {
@@ -1476,7 +1493,7 @@ function InvoiceCard({ order }: { order: Order }) {
         <span className={`status-pill ${order.status}`}>{statusLabel}</span>
       </div>
       <div className="order-card-items">
-        {order.items.map((item) => <span key={`${order.id}-${item.name}-${item.size ?? ""}-${item.power ?? ""}`}>{item.name}{item.size ? ` [${item.size}]` : ""}{item.power ? ` [Power ${item.power}]` : ""} × {item.quantity}</span>)}
+        {order.items.map((item) => <span key={`${order.id}-${item.name}-${item.size ?? ""}-${item.power ?? ""}-${item.speed ?? ""}`}>{item.name}{item.size ? ` [${item.size}]` : ""}{item.power ? ` [Power ${item.power}]` : ""}{item.speed ? ` [Speed: ${item.speed}]` : ""} × {item.quantity}</span>)}
       </div>
       <div className="order-card-foot"><strong>{money(order.total)}</strong><button className="btn-ghost btn-small" onClick={downloadInvoice}><Download size={14} /> Download Invoice</button></div>
       {order.reviewMessage && <p className="review-message">{order.reviewMessage}</p>}
@@ -1569,7 +1586,7 @@ function OrderReviewCard({ order, updateOrder, deleteOrder, toast }: {
           <p><Phone size={14} /> {order.phone}</p>
           <p className="address-line"><strong>Deliver to:</strong> {order.address}</p>
           {order.additionalContact && <p className="address-line"><strong>Additional:</strong> {order.additionalContact}</p>}
-          <div className="review-items">{order.items.map((item) => <span key={`${order.id}-${item.name}-${item.size ?? ""}-${item.power ?? ""}`}>{item.name}{item.size ? ` [${item.size}]` : ""}{item.power ? ` [Power ${item.power}]` : ""} × {item.quantity} — {money(item.price * item.quantity)}</span>)}</div>
+          <div className="review-items">{order.items.map((item) => <span key={`${order.id}-${item.name}-${item.size ?? ""}-${item.power ?? ""}-${item.speed ?? ""}`}>{item.name}{item.size ? ` [${item.size}]` : ""}{item.power ? ` [Power ${item.power}]` : ""}{item.speed ? ` [Speed: ${item.speed}]` : ""} × {item.quantity} — {money(item.price * item.quantity)}</span>)}</div>
           <div className="review-total"><span>Total</span><strong>{money(order.total)}</strong></div>
           <p className="payment-reference"><strong>UPI reference:</strong> {order.paymentReference}</p>
         </div>
